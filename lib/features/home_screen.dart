@@ -206,6 +206,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _selectOnlyWithUpdates() {
+    if (_busy) return;
+    setState(() {
+      _projects = _projects
+          .map((p) => p.copyWith(selected: p.hasRemoteUpdates))
+          .toList();
+    });
+    final count = _projects.where((p) => p.hasRemoteUpdates).length;
+    _log('Выбрано репозиториев с обновлениями: $count');
+  }
+
   void _toggleProject(int index, bool? value) {
     setState(() {
       _projects[index] = _projects[index].copyWith(selected: value ?? false);
@@ -272,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     projects: _projects,
                     busy: _busy,
                     onToggleAll: _toggleSelectAll,
+                    onSelectWithUpdates: _selectOnlyWithUpdates,
                     onToggle: _toggleProject,
                     onPull: (p) => _runOnProjects(
                       [p],
@@ -451,6 +463,7 @@ class _ProjectList extends StatelessWidget {
     required this.projects,
     required this.busy,
     required this.onToggleAll,
+    required this.onSelectWithUpdates,
     required this.onToggle,
     required this.onPull,
     required this.onPush,
@@ -460,6 +473,7 @@ class _ProjectList extends StatelessWidget {
   final List<GitProject> projects;
   final bool busy;
   final void Function(bool? value) onToggleAll;
+  final VoidCallback onSelectWithUpdates;
   final void Function(int index, bool? value) onToggle;
   final void Function(GitProject project) onPull;
   final void Function(GitProject project) onPush;
@@ -485,6 +499,8 @@ class _ProjectList extends StatelessWidget {
                   label: 'обновлений: $updatesCount',
                   icon: Icons.system_update_alt,
                   color: Colors.orange.shade700,
+                  tooltip: 'Выбрать только репозитории с обновлениями',
+                  onTap: busy ? null : onSelectWithUpdates,
                 ),
               ],
             ],
@@ -614,12 +630,14 @@ class _UpdatesChip extends StatelessWidget {
     required this.icon,
     required this.color,
     this.tooltip,
+    this.onTap,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final String? tooltip;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -642,8 +660,20 @@ class _UpdatesChip extends StatelessWidget {
         ],
       ),
     );
-    if (tooltip == null) return chip;
-    return Tooltip(message: tooltip!, child: chip);
+
+    Widget child = chip;
+    if (onTap != null) {
+      child = Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: chip,
+        ),
+      );
+    }
+    if (tooltip == null) return child;
+    return Tooltip(message: tooltip!, child: child);
   }
 }
 

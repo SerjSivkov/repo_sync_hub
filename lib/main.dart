@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'features/home_screen.dart';
+import 'features/splash_screen.dart';
 
 void main() {
   runApp(const RepoSyncHubApp());
@@ -15,10 +15,13 @@ class RepoSyncHubApp extends StatelessWidget {
       title: 'Repo Sync Hub',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFC6D26)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF5B6CFF),
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }

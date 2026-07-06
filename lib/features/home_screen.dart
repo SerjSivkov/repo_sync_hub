@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../core/app_settings.dart';
 import '../models/git_project.dart';
+import '../models/scan_progress.dart';
 import '../services/git_operations.dart';
 import '../services/git_runner.dart';
 import '../services/git_scanner.dart';
+import '../services/scan_cancellation.dart';
 import 'settings_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,6 +25,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<GitProject> _projects = [];
   final List<String> _logs = [];
   bool _busy = false;
+  bool _scanning = false;
+  ScanCancellation? _scanCancellation;
+  ScanProgress? _scanProgress;
 
   @override
   void initState() {
@@ -49,25 +54,93 @@ class _HomeScreenState extends State<HomeScreen> {
   List<GitProject> get _selectedProjects =>
       _projects.where((p) => p.selected).toList(growable: false);
 
+  void _stopScan() {
+    if (!_scanning) return;
+    _scanCancellation?.cancel();
+    _log('Остановка сканирования…');
+  }
+
   Future<void> _scan() async {
     if (_settings.projectsRoot.isEmpty) {
       _log('Укажите директорию с проектами в настройках');
       return;
     }
-    setState(() => _busy = true);
+    final cancellation = ScanCancellation();
+    setState(() {
+      _busy = true;
+      _scanning = true;
+      _scanCancellation = cancellation;
+      _scanProgress = const ScanProgress(
+        total: 0,
+        completed: 0,
+        successCount: 0,
+        errorCount: 0,
+      );
+    });
     _log('Сканирование ${_settings.projectsRoot}…');
     try {
       final projects = await _scanner.scan(
         rootPath: _settings.projectsRoot,
         recursive: _settings.recursiveScan,
         settings: _settings,
+        cancellation: cancellation,
+        onProgress: (progress) {
+          if (!mounted) return;
+          setState(() {
+            _scanProgress = progress;
+            _projects = List.from(progress.projects);
+          });
+        },
       );
-      setState(() => _projects = projects);
-      _log('Найдено репозиториев: ${projects.length}');
+      if (!mounted) return;
+      setState(() {
+        _projects = projects;
+        _scanProgress = ScanProgress(
+          total: projects.length,
+          completed: projects.length,
+          successCount: projects.where((p) => !p.scanFailed).length,
+          errorCount: projects.where((p) => p.scanFailed).length,
+          projects: projects,
+        );
+      });
+      final withUpdates = projects.where((p) => p.hasRemoteUpdates).length;
+      _log(
+        'Готово: ${projects.length} репозиториев, '
+        'OK ${projects.where((p) => !p.scanFailed).length}, '
+        'ошибок ${projects.where((p) => p.scanFailed).length}'
+        '${withUpdates > 0 ? ', обновлений доступно: $withUpdates' : ''}',
+      );
+    } on ScanCancelledException {
+      if (!mounted) return;
+      final progress = _scanProgress;
+      final scanned = _projects.length;
+      final total = progress?.total ?? scanned;
+      _log(
+        'Сканирование остановлено: $scanned из $total, '
+        'OK ${progress?.successCount ?? 0}, ошибок ${progress?.errorCount ?? 0}',
+      );
+      if (progress != null) {
+        setState(() {
+          _scanProgress = ScanProgress(
+            total: progress.total,
+            completed: progress.completed,
+            successCount: progress.successCount,
+            errorCount: progress.errorCount,
+            projects: _projects,
+            cancelled: true,
+          );
+        });
+      }
     } catch (e) {
       _log('Ошибка сканирования: $e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _scanning = false;
+          _scanCancellation = null;
+        });
+      }
     }
   }
 
@@ -80,13 +153,19 @@ class _HomeScreenState extends State<HomeScreen> {
       _log('Нет выбранных проектов');
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _scanProgress = null;
+    });
     _log('=== $label (${targets.length}) ===');
     for (final project in targets) {
       final index = _projects.indexWhere((p) => p.path == project.path);
       if (index < 0) continue;
       setState(() {
-        _projects[index] = _projects[index].copyWith(status: GitProjectStatus.scanning);
+        _projects[index] = _projects[index].copyWith(
+          status: GitProjectStatus.scanning,
+          clearUpdatesReceived: true,
+        );
       });
       try {
         final updated = await action(project);
@@ -137,6 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final selectedCount = _selectedProjects.length;
+    final isScanning = _scanning;
 
     return Scaffold(
       appBar: AppBar(
@@ -154,6 +234,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _Toolbar(
             rootPath: _settings.projectsRoot,
             busy: _busy,
+            isScanning: isScanning,
+            scanProgress: _scanProgress,
             selectedCount: selectedCount,
             totalCount: _projects.length,
             onScan: _scan,
@@ -172,11 +254,12 @@ class _HomeScreenState extends State<HomeScreen> {
               'Sync',
               (p) => _ops.syncProject(p, _settings, log: _log),
             ),
+            onStopScan: _stopScan,
             onSettings: _openSettings,
           ),
           Expanded(
             flex: 3,
-            child: _projects.isEmpty
+            child: _projects.isEmpty && !isScanning
                 ? Center(
                     child: Text(
                       _settings.projectsRoot.isEmpty
@@ -222,27 +305,36 @@ class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.rootPath,
     required this.busy,
+    required this.isScanning,
+    required this.scanProgress,
     required this.selectedCount,
     required this.totalCount,
     required this.onScan,
     required this.onPull,
     required this.onPush,
     required this.onSync,
+    required this.onStopScan,
     required this.onSettings,
   });
 
   final String rootPath;
   final bool busy;
+  final bool isScanning;
+  final ScanProgress? scanProgress;
   final int selectedCount;
   final int totalCount;
   final VoidCallback onScan;
   final VoidCallback onPull;
   final VoidCallback onPush;
   final VoidCallback onSync;
+  final VoidCallback onStopScan;
   final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progress = scanProgress;
+
     return Material(
       elevation: 1,
       child: Padding(
@@ -257,12 +349,64 @@ class _Toolbar extends StatelessWidget {
                     rootPath.isEmpty ? 'Директория не задана' : rootPath,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: theme.textTheme.bodyMedium,
                   ),
                 ),
                 Text('$selectedCount / $totalCount'),
               ],
             ),
+            if (isScanning && progress != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      progress.cancelled
+                          ? 'Остановка…'
+                          : progress.currentName != null
+                              ? 'Сканирование: ${progress.currentName}'
+                              : progress.total == 0
+                                  ? 'Поиск репозиториев…'
+                                  : 'Сканирование…',
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (progress.total > 0)
+                    Text(
+                      '${progress.completed}/${progress.total}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                ],
+              ),
+              if (progress.total > 0) ...[
+                const SizedBox(height: 6),
+                LinearProgressIndicator(value: progress.fraction),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: LinearProgressIndicator(),
+                ),
+              const SizedBox(height: 6),
+              Text(
+                'OK: ${progress.successCount} · ошибок: ${progress.errorCount}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ] else if (progress != null && progress.isDone && !busy) ...[
+              const SizedBox(height: 8),
+              Text(
+                progress.cancelled
+                    ? 'Остановлено: OK ${progress.successCount}, ошибок ${progress.errorCount}, '
+                        'просканировано ${progress.completed}/${progress.total}'
+                    : 'Сканирование: OK ${progress.successCount}, ошибок ${progress.errorCount}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -274,15 +418,9 @@ class _Toolbar extends StatelessWidget {
                   label: const Text('Директория'),
                 ),
                 FilledButton.tonalIcon(
-                  onPressed: busy ? null : onScan,
-                  icon: busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh),
-                  label: const Text('Сканировать'),
+                  onPressed: isScanning ? onStopScan : (busy ? null : onScan),
+                  icon: Icon(isScanning ? Icons.stop_rounded : Icons.refresh),
+                  label: Text(isScanning ? 'Остановить' : 'Сканировать'),
                 ),
                 FilledButton.icon(
                   onPressed: busy || selectedCount == 0 ? null : onPull,
@@ -330,6 +468,7 @@ class _ProjectList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allSelected = projects.isNotEmpty && projects.every((p) => p.selected);
+    final updatesCount = projects.where((p) => p.hasRemoteUpdates).length;
 
     return Column(
       children: [
@@ -337,7 +476,19 @@ class _ProjectList extends StatelessWidget {
           value: allSelected,
           tristate: true,
           onChanged: busy ? null : onToggleAll,
-          title: const Text('Выбрать все'),
+          title: Row(
+            children: [
+              const Text('Выбрать все'),
+              if (updatesCount > 0) ...[
+                const SizedBox(width: 12),
+                _UpdatesChip(
+                  label: 'обновлений: $updatesCount',
+                  icon: Icons.system_update_alt,
+                  color: Colors.orange.shade700,
+                ),
+              ],
+            ],
+          ),
           dense: true,
         ),
         Expanded(
@@ -381,13 +532,39 @@ class _ProjectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return ListTile(
       leading: Checkbox(value: project.selected, onChanged: busy ? null : onChanged),
       title: Row(
         children: [
-          _StatusDot(status: project.status),
+          _StatusDot(status: project.status, scanFailed: project.scanFailed),
           const SizedBox(width: 8),
-          Expanded(child: Text(project.name, style: const TextStyle(fontWeight: FontWeight.w600))),
+          Expanded(
+            child: Text(project.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          if (project.hasRemoteUpdates)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _UpdatesChip(
+                label: project.remoteBehindCount > 0
+                    ? '+${project.remoteBehindCount}'
+                    : 'обновления',
+                icon: Icons.arrow_downward_rounded,
+                color: theme.colorScheme.tertiary,
+                tooltip: 'Доступны обновления на remote',
+              ),
+            ),
+          if (project.updatesReceived)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _UpdatesChip(
+                label: 'получены',
+                icon: Icons.check_circle_outline,
+                color: Colors.green.shade700,
+                tooltip: 'Обновления успешно подтянуты',
+              ),
+            ),
         ],
       ),
       subtitle: Column(
@@ -398,9 +575,14 @@ class _ProjectTile extends StatelessWidget {
             '${project.isDirty ? ' · dirty' : ''}',
           ),
           if (project.gitlabRemote != null)
-            Text('remote: ${project.gitlabRemote}', style: Theme.of(context).textTheme.bodySmall),
-          if (project.lastMessage != null)
-            Text(project.lastMessage!, style: Theme.of(context).textTheme.bodySmall),
+            Text('remote: ${project.gitlabRemote}', style: theme.textTheme.bodySmall),
+          if (project.scanError != null)
+            Text(
+              project.scanError!,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            )
+          else if (project.lastMessage != null)
+            Text(project.lastMessage!, style: theme.textTheme.bodySmall),
         ],
       ),
       isThreeLine: true,
@@ -426,20 +608,66 @@ class _ProjectTile extends StatelessWidget {
   }
 }
 
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.status});
+class _UpdatesChip extends StatelessWidget {
+  const _UpdatesChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.tooltip,
+  });
 
-  final GitProjectStatus status;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
-      GitProjectStatus.idle => Colors.grey,
-      GitProjectStatus.scanning || GitProjectStatus.pulling || GitProjectStatus.pushing || GitProjectStatus.syncing => Colors.blue,
-      GitProjectStatus.success => Colors.green,
-      GitProjectStatus.warning => Colors.orange,
-      GitProjectStatus.error => Colors.red,
-    };
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+    if (tooltip == null) return chip;
+    return Tooltip(message: tooltip!, child: chip);
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.status, required this.scanFailed});
+
+  final GitProjectStatus status;
+  final bool scanFailed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = scanFailed
+        ? Colors.red
+        : switch (status) {
+            GitProjectStatus.idle => Colors.grey,
+            GitProjectStatus.scanning ||
+            GitProjectStatus.pulling ||
+            GitProjectStatus.pushing ||
+            GitProjectStatus.syncing =>
+              Colors.blue,
+            GitProjectStatus.success => Colors.green,
+            GitProjectStatus.warning => Colors.orange,
+            GitProjectStatus.error => Colors.red,
+          };
     return Container(
       width: 10,
       height: 10,

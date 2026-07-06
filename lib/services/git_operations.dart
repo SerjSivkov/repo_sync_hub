@@ -71,21 +71,29 @@ class GitOperations {
     }
 
     log?.call('  git pull --ff-only');
-    final pull = await _runner.run(
+    var pull = await _runner.run(
       project.path,
       ['pull', '--ff-only', 'origin', defaultBranch],
     );
     if (!pull.ok) {
-      final fallback = await _runner.run(project.path, ['pull', '--ff-only']);
-      if (!fallback.ok) {
+      pull = await _runner.run(project.path, ['pull', '--ff-only']);
+      if (!pull.ok) {
         return working.copyWith(
           status: GitProjectStatus.error,
-          lastMessage: fallback.combined,
+          lastMessage: pull.combined,
         );
       }
     }
 
-    return _refreshAfter(project, settings, GitProjectStatus.success, 'pull ok');
+    final received = pull.pulledUpdates;
+    final message = received ? 'получены обновления' : 'уже актуально';
+    final refreshed = await _refreshAfter(
+      project,
+      settings,
+      GitProjectStatus.success,
+      message,
+    );
+    return refreshed.copyWith(updatesReceived: received, remoteBehindCount: 0);
   }
 
   Future<GitProject> pushToGitlab(

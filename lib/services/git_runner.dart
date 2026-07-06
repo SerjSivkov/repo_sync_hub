@@ -59,6 +59,8 @@ class GitRunner {
     return null;
   }
 
+  Future<String?> primaryRemote(String repoPath) => _primaryRemote(repoPath);
+
   Future<String?> _primaryRemote(String repoPath) async {
     final remotes = await listRemotes(repoPath);
     if (remotes.containsKey('origin')) return 'origin';
@@ -104,6 +106,39 @@ class GitRunner {
     final parts = counts.stdout.trim().split(RegExp(r'\s+'));
     if (parts.length < 2) return (0, 0);
     return (int.tryParse(parts[0]) ?? 0, int.tryParse(parts[1]) ?? 0);
+  }
+
+  /// Сколько коммитов на remote/defaultBranch нет локально.
+  Future<int> commitsBehindRemote(
+    String repoPath, {
+    required String branch,
+    required String remote,
+  }) async {
+    final remoteRef = await run(
+      repoPath,
+      ['show-ref', '--verify', '--quiet', 'refs/remotes/$remote/$branch'],
+    );
+    if (!remoteRef.ok) return 0;
+
+    final localRef = await run(
+      repoPath,
+      ['show-ref', '--verify', '--quiet', 'refs/heads/$branch'],
+    );
+    if (!localRef.ok) {
+      final countOnlyRemote = await run(
+        repoPath,
+        ['rev-list', '--count', 'refs/remotes/$remote/$branch'],
+      );
+      if (!countOnlyRemote.ok) return 0;
+      return int.tryParse(countOnlyRemote.stdout.trim()) ?? 0;
+    }
+
+    final behind = await run(
+      repoPath,
+      ['rev-list', '--count', '$branch..$remote/$branch'],
+    );
+    if (!behind.ok) return 0;
+    return int.tryParse(behind.stdout.trim()) ?? 0;
   }
 
   Future<void> ensureRemote({

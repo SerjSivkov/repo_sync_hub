@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repo_sync_hub/core/app_settings.dart';
+import 'package:repo_sync_hub/models/git_project.dart';
+import 'package:repo_sync_hub/models/scan_progress.dart';
 import 'package:repo_sync_hub/services/git_operations.dart';
 import 'package:repo_sync_hub/services/git_runner.dart';
 
@@ -40,6 +42,52 @@ void main() {
         ops.buildGitlabUrl(settings, 'gdebenz'),
         'https://oauth2:secret-token@gitlab.com/mobile/gdebenz.git',
       );
+    });
+  });
+
+  group('GitProject', () {
+    test('hasRemoteUpdates when remoteBehindCount > 0', () {
+      final project = GitProject(name: 'a', path: '/a', remoteBehindCount: 3);
+      expect(project.hasRemoteUpdates, isTrue);
+    });
+  });
+
+  group('ScanProgress', () {
+    test('fraction reflects completed over total', () {
+      const progress = ScanProgress(total: 10, completed: 4, successCount: 3, errorCount: 1);
+      expect(progress.fraction, 0.4);
+      expect(progress.isDone, isFalse);
+    });
+
+    test('isDone when cancelled', () {
+      const progress = ScanProgress(
+        total: 10,
+        completed: 3,
+        successCount: 2,
+        errorCount: 1,
+        cancelled: true,
+      );
+      expect(progress.isDone, isTrue);
+    });
+  });
+
+  group('GitCommandResult.pulledUpdates', () {
+    test('detects fast-forward pull', () {
+      const result = GitCommandResult(
+        exitCode: 0,
+        stdout: 'Updating abc..def\nFast-forward',
+        stderr: '',
+      );
+      expect(result.pulledUpdates, isTrue);
+    });
+
+    test('detects already up to date', () {
+      const result = GitCommandResult(
+        exitCode: 0,
+        stdout: 'Already up to date.',
+        stderr: '',
+      );
+      expect(result.pulledUpdates, isFalse);
     });
   });
 }

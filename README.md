@@ -56,3 +56,13 @@ open build/macos/Build/Products/Release/repo_sync_hub.app
 ## Безопасность
 
 GitLab token хранится локально в `SharedPreferences`. Если remote уже настроен в репозитории, token не обязателен — push идёт через существующий URL.
+
+## Участие в разработке
+
+Bug reports, предложения и pull request — см. [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Репозиторий: [github.com/SerjSivkov/repo_sync_hub](https://github.com/SerjSivkov/repo_sync_hub)
+
+## Лицензия
+
+[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).

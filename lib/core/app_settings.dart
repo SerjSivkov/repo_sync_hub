@@ -22,6 +22,7 @@ class AppSettings {
     this.viewMode = RepoViewMode.list,
     this.autoScanOnStartup = false,
     this.scanCacheTtlMinutes = 60,
+    this.scanConcurrency = 4,
     this.scheduleEnabled = false,
     this.scheduleIntervalMinutes = 60,
   });
@@ -44,6 +45,7 @@ class AppSettings {
   static const _keyView = 'view_mode';
   static const _keyAutoScan = 'auto_scan_startup';
   static const _keyCacheTtl = 'scan_cache_ttl';
+  static const _keyConcurrency = 'scan_concurrency';
   static const _keyScheduleOn = 'schedule_enabled';
   static const _keyScheduleMin = 'schedule_interval_min';
 
@@ -71,6 +73,9 @@ class AppSettings {
 
   /// Сколько минут результат сканирования считается свежим (кэш).
   final int scanCacheTtlMinutes;
+
+  /// Сколько репозиториев сканировать параллельно (1–16).
+  final int scanConcurrency;
 
   final bool scheduleEnabled;
   final int scheduleIntervalMinutes;
@@ -103,6 +108,7 @@ class AppSettings {
     RepoViewMode? viewMode,
     bool? autoScanOnStartup,
     int? scanCacheTtlMinutes,
+    int? scanConcurrency,
     bool? scheduleEnabled,
     int? scheduleIntervalMinutes,
   }) {
@@ -120,6 +126,7 @@ class AppSettings {
       viewMode: viewMode ?? this.viewMode,
       autoScanOnStartup: autoScanOnStartup ?? this.autoScanOnStartup,
       scanCacheTtlMinutes: scanCacheTtlMinutes ?? this.scanCacheTtlMinutes,
+      scanConcurrency: scanConcurrency ?? this.scanConcurrency,
       scheduleEnabled: scheduleEnabled ?? this.scheduleEnabled,
       scheduleIntervalMinutes:
           scheduleIntervalMinutes ?? this.scheduleIntervalMinutes,
@@ -167,6 +174,7 @@ class AppSettings {
           : RepoViewMode.list,
       autoScanOnStartup: prefs.getBool(_keyAutoScan) ?? false,
       scanCacheTtlMinutes: prefs.getInt(_keyCacheTtl) ?? 60,
+      scanConcurrency: prefs.getInt(_keyConcurrency) ?? 4,
       scheduleEnabled: prefs.getBool(_keyScheduleOn) ?? false,
       scheduleIntervalMinutes: prefs.getInt(_keyScheduleMin) ?? 60,
     );
@@ -188,6 +196,7 @@ class AppSettings {
         _keyView, viewMode == RepoViewMode.tree ? 'tree' : 'list');
     await prefs.setBool(_keyAutoScan, autoScanOnStartup);
     await prefs.setInt(_keyCacheTtl, scanCacheTtlMinutes);
+    await prefs.setInt(_keyConcurrency, scanConcurrency);
     await prefs.setBool(_keyScheduleOn, scheduleEnabled);
     await prefs.setInt(_keyScheduleMin, scheduleIntervalMinutes);
   }
@@ -203,11 +212,12 @@ class AppSettings {
         'pushTags': pushTags,
         'themeMode': _themeTo(themeMode),
         'viewMode': viewMode.name,
-        'autoScanOnStartup': autoScanOnStartup,
-        'scanCacheTtlMinutes': scanCacheTtlMinutes,
-        'scheduleEnabled': scheduleEnabled,
-        'scheduleIntervalMinutes': scheduleIntervalMinutes,
-      };
+      'autoScanOnStartup': autoScanOnStartup,
+      'scanCacheTtlMinutes': scanCacheTtlMinutes,
+      'scanConcurrency': scanConcurrency,
+      'scheduleEnabled': scheduleEnabled,
+      'scheduleIntervalMinutes': scheduleIntervalMinutes,
+    };
 
   @override
   String toString() => jsonEncode(toJson());

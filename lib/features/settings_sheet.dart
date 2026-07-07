@@ -19,6 +19,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
   late final TextEditingController _remoteCtrl;
   late final TextEditingController _intervalCtrl;
   late final TextEditingController _cacheTtlCtrl;
+  late final TextEditingController _concurrencyCtrl;
 
   late List<String> _roots;
   late bool _recursive;
@@ -42,6 +43,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
     _intervalCtrl =
         TextEditingController(text: '${s.scheduleIntervalMinutes}');
     _cacheTtlCtrl = TextEditingController(text: '${s.scanCacheTtlMinutes}');
+    _concurrencyCtrl = TextEditingController(text: '${s.scanConcurrency}');
     _recursive = s.recursiveScan;
     _autoStash = s.autoStashBeforePull;
     _fetchBeforePull = s.fetchBeforePull;
@@ -60,6 +62,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
     _remoteCtrl.dispose();
     _intervalCtrl.dispose();
     _cacheTtlCtrl.dispose();
+    _concurrencyCtrl.dispose();
     super.dispose();
   }
 
@@ -94,6 +97,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
       viewMode: _viewMode,
       autoScanOnStartup: _autoScanOnStartup,
       scanCacheTtlMinutes: _intOr(_cacheTtlCtrl, 60, min: 0),
+      scanConcurrency: _intOr(_concurrencyCtrl, 4, min: 1).clamp(1, 16).toInt(),
       scheduleEnabled: _scheduleEnabled,
       scheduleIntervalMinutes: _intOr(_intervalCtrl, 60, min: 1),
     );
@@ -276,6 +280,15 @@ class _SettingsSheetState extends State<SettingsSheet> {
                 labelText: 'Кэш скана, мин',
                 helperText:
                     'Свежие (в пределах этого срока) репозитории не пересканируются. 0 — всегда сканировать',
+              ),
+            ),
+            TextField(
+              controller: _concurrencyCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Параллелизм скана',
+                helperText:
+                    'Сколько репозиториев сканировать одновременно (1–16)',
               ),
             ),
             SwitchListTile(

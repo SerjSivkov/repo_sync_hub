@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../core/app_settings.dart';
+import '../core/concurrency.dart';
 import '../models/git_project.dart';
 import '../models/scan_progress.dart';
 import 'git_runner.dart';
@@ -57,10 +58,33 @@ class GitScanner {
 
     refs.sort((a, b) => a.path.compareTo(b.path));
 
-    final projects = <GitProject>[];
+    if (refs.isEmpty) {
+      onProgress?.call(
+        ScanProgress(
+          total: 0,
+          completed: 0,
+          successCount: 0,
+          errorCount: 0,
+          projects: const [],
+        ),
+      );
+      return const [];
+    }
+
     var successCount = 0;
     var errorCount = 0;
     var cancelled = false;
+
+    // Текущие (в работе) индексы — для метки прогресса.
+    final inflight = <int>{};
+
+    // Результаты по индексам, чтобы финальный список шёл в порядке refs
+    // (отсортировано по пути), а не по завершению.
+    final results = List<GitProject?>.filled(refs.length, null);
+    final completedCount = <int>{};
+
+    // Снимок завершённых репозиториев в порядке refs — для прогресс-колбэка.
+    List<GitProject> snapshot() => results.whereType<GitProject>().toList();
 
     void emit(int completed, String? currentName, {bool stopped = false}) {
       onProgress?.call(
@@ -70,72 +94,90 @@ class GitScanner {
           successCount: successCount,
           errorCount: errorCount,
           currentName: currentName,
-          projects: List.unmodifiable(projects),
+          projects: List.unmodifiable(snapshot()),
           cancelled: stopped,
         ),
       );
     }
 
-    emit(0, refs.isNotEmpty ? p.basename(refs.first.path) : null);
+    String? inflightLabel() {
+      if (inflight.isEmpty) return null;
+      final minIdx = inflight.reduce((a, b) => a < b ? a : b);
+      final firstName = p.basename(refs[minIdx].path);
+      if (inflight.length == 1) return firstName;
+      return '$firstName +${inflight.length - 1}';
+    }
 
-    for (var i = 0; i < refs.length; i++) {
-      if (cancellation?.isCancelled ?? false) {
-        cancelled = true;
-        break;
-      }
+    emit(0, p.basename(refs.first.path));
 
+    Future<GitProject?> processRef(int i) async {
       final ref = refs[i];
       final name = p.basename(ref.path);
-      emit(i, name);
-
+      inflight.add(i);
+      emit(completedCount.length, inflightLabel());
       try {
+        if (cancellation?.isCancelled ?? false) {
+          cancelled = true;
+          return null;
+        }
         final prev = cached[ref.path];
-        final GitProject? info;
         if (_isFresh(prev, cacheTtl)) {
-          info = prev!.copyWith(
+          return prev!.copyWith(
             scanRoot: ref.root,
             status: GitProjectStatus.idle,
           );
-        } else {
-          info = await inspectRepo(
-            ref.path,
-            settings,
-            scanRoot: ref.root,
-            previous: prev,
-            cancellation: cancellation,
-          );
         }
-        if (cancellation?.isCancelled ?? false) {
-          cancelled = true;
-          break;
-        }
-        if (info != null) {
-          projects.add(info);
-          if (info.scanFailed) {
-            errorCount++;
-          } else {
-            successCount++;
-          }
-        }
-      } catch (e) {
-        if (e is ScanCancelledException) {
-          cancelled = true;
-          break;
-        }
-        errorCount++;
-        projects.add(
-          GitProject(
-            name: name,
-            path: ref.path,
-            scanRoot: ref.root,
-            scanError: '$e',
-            status: GitProjectStatus.error,
-            lastMessage: 'Ошибка сканирования',
-          ),
+        return await inspectRepo(
+          ref.path,
+          settings,
+          scanRoot: ref.root,
+          previous: prev,
+          cancellation: cancellation,
         );
+      } on ScanCancelledException {
+        cancelled = true;
+        return null;
+      } catch (e) {
+        return GitProject(
+          name: name,
+          path: ref.path,
+          scanRoot: ref.root,
+          scanError: '$e',
+          status: GitProjectStatus.error,
+          lastMessage: 'Ошибка сканирования',
+        );
+      } finally {
+        inflight.remove(i);
       }
     }
 
+    void handleResult(int i, GitProject? info) {
+      if (info != null) {
+        results[i] = info;
+        if (info.scanFailed) {
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
+      completedCount.add(i);
+      emit(completedCount.length, inflightLabel());
+    }
+
+    final concurrency =
+        settings.scanConcurrency.clamp(1, refs.length).toInt();
+    await runWithConcurrency<GitProject?>(
+      refs.length,
+      concurrency,
+      processRef,
+      onResult: handleResult,
+      shouldStop: () =>
+          cancelled || (cancellation?.isCancelled ?? false),
+    );
+
+    final projects = snapshot();
+
+    if (cancellation?.isCancelled ?? false) cancelled = true;
     emit(cancelled ? projects.length : refs.length, null, stopped: cancelled);
 
     if (cancelled) {

@@ -5,6 +5,7 @@ import 'package:repo_sync_hub/models/repo_group.dart';
 import 'package:repo_sync_hub/models/scan_progress.dart';
 import 'package:repo_sync_hub/services/git_operations.dart';
 import 'package:repo_sync_hub/services/git_runner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('AppSettings', () {
@@ -16,6 +17,18 @@ void main() {
     test('remoteBaseUrl keeps explicit scheme', () {
       final settings = AppSettings(remoteHost: 'http://gitlab.local');
       expect(settings.remoteBaseUrl, 'http://gitlab.local');
+    });
+
+    test('scanConcurrency defaults to 4', () {
+      expect(AppSettings().scanConcurrency, 4);
+    });
+
+    test('scanConcurrency round-trips through SharedPreferences', () async {
+      SharedPreferences.setMockInitialValues({});
+      final original = AppSettings(scanConcurrency: 8);
+      await original.save();
+      final loaded = await AppSettings.load();
+      expect(loaded.scanConcurrency, 8);
     });
   });
 

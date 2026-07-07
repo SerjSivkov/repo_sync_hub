@@ -11,12 +11,13 @@ class GitOperations {
 
   final GitRunner _runner;
 
-  String buildGitlabUrl(AppSettings settings, String repoName) {
-    final base = settings.gitlabBaseUrl;
-    final group = settings.gitlabGroup.trim().replaceAll(RegExp(r'^/+|/+$'), '');
-    final token = settings.gitlabToken.trim();
+  String buildRemoteUrl(AppSettings settings, String repoName) {
+    final base = settings.remoteBaseUrl;
+    final group = settings.remoteGroup.trim().replaceAll(RegExp(r'^/+|/+$'), '');
+    final token = settings.remoteToken.trim();
 
-    var url = '$base/$group/$repoName.git';
+    final path = group.isEmpty ? repoName : '$group/$repoName';
+    var url = '$base/$path.git';
     if (token.isNotEmpty) {
       final uri = Uri.parse(url);
       url = '${uri.scheme}://oauth2:$token@${uri.host}${uri.path}';
@@ -93,7 +94,11 @@ class GitOperations {
       GitProjectStatus.success,
       message,
     );
-    return refreshed.copyWith(updatesReceived: received, remoteBehindCount: 0);
+    return refreshed.copyWith(
+      updatesReceived: received,
+      remoteBehindCount: 0,
+      lastPulledAt: DateTime.now(),
+    );
   }
 
   Future<GitProject> pushToGitlab(
@@ -104,15 +109,15 @@ class GitOperations {
     log?.call('[${project.name}] push → GitLab');
     var working = project.copyWith(status: GitProjectStatus.pushing);
 
-    final remoteName = settings.gitlabRemoteName;
+    final remoteName = settings.remoteName;
     final remotes = await _runner.listRemotes(project.path);
-    final host = settings.gitlabHost.replaceAll(RegExp(r'^https?://'), '');
-    final hasGitlabRemote = remotes.entries.any(
-      (e) => e.key == remoteName && e.value.contains(host),
+    final host = settings.remoteHost.replaceAll(RegExp(r'^https?://'), '');
+    final hasTargetRemote = remotes.entries.any(
+      (e) => e.key == remoteName && host.isNotEmpty && e.value.contains(host),
     );
 
-    if (!hasGitlabRemote) {
-      final remoteUrl = buildGitlabUrl(settings, project.name);
+    if (!hasTargetRemote) {
+      final remoteUrl = buildRemoteUrl(settings, project.name);
       await _runner.ensureRemote(
         repoPath: project.path,
         remoteName: remoteName,
@@ -120,7 +125,7 @@ class GitOperations {
         log: log,
       );
     } else {
-      log?.call('  remote $remoteName уже указывает на GitLab');
+      log?.call('  remote $remoteName уже указывает на систему-приёмник');
     }
 
     final branch = project.defaultBranch ?? await _runner.defaultBranch(project.path);
@@ -182,14 +187,15 @@ class GitOperations {
     String message,
   ) async {
     final scanner = GitScanner(_runner);
-    final refreshed = await scanner.scan(
-      rootPath: project.path,
-      recursive: false,
-      settings: settings,
+    final refreshed = await scanner.inspectRepo(
+      project.path,
+      settings,
+      scanRoot: project.scanRoot,
+      previous: project,
     );
-    if (refreshed.isEmpty) {
+    if (refreshed == null) {
       return project.copyWith(status: status, lastMessage: message);
     }
-    return refreshed.first.copyWith(status: status, lastMessage: message);
+    return refreshed.copyWith(status: status, lastMessage: message);
   }
 }

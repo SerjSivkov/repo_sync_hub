@@ -89,6 +89,36 @@ class GitRunner {
     return r.ok && r.stdout.trim().isNotEmpty;
   }
 
+  /// Всего коммитов в репозитории (по всем достижимым из HEAD).
+  Future<int?> commitCount(String repoPath) async {
+    final r = await run(repoPath, ['rev-list', '--count', 'HEAD']);
+    if (!r.ok) return null;
+    return int.tryParse(r.stdout.trim());
+  }
+
+  /// Дата последнего коммита (committer date HEAD).
+  Future<DateTime?> lastCommitDate(String repoPath) async {
+    final r = await run(repoPath, ['log', '-1', '--format=%ct']);
+    if (!r.ok) return null;
+    final seconds = int.tryParse(r.stdout.trim());
+    if (seconds == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+  }
+
+  /// Размер рабочей копии в байтах (через `du -sk`).
+  Future<int?> repoSizeBytes(String repoPath) async {
+    try {
+      final result = await Process.run('du', ['-sk', repoPath])
+          .timeout(const Duration(seconds: 30));
+      if (result.exitCode != 0) return null;
+      final out = '${result.stdout}'.trim();
+      final kb = int.tryParse(out.split(RegExp(r'\s+')).first);
+      return kb == null ? null : kb * 1024;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<(int, int)> aheadBehind(String repoPath) async {
     final branch = await currentBranch(repoPath);
     if (branch == null) return (0, 0);

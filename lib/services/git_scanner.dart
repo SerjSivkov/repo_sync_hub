@@ -10,36 +10,52 @@ import 'scan_cancellation.dart';
 
 typedef ScanProgressCallback = void Function(ScanProgress progress);
 
-/// Поиск git-репозиториев в заданной директории.
+class _RepoRef {
+  const _RepoRef(this.path, this.root);
+  final String path;
+  final String root;
+}
+
+/// Поиск git-репозиториев в заданных директориях.
 class GitScanner {
   GitScanner(this._runner);
 
   final GitRunner _runner;
 
+  /// Сканирует несколько корневых директорий. Если репозиторий есть в [cached]
+  /// и его последнее сканирование свежее [cacheTtl], git не опрашивается —
+  /// данные берутся из кэша (чтобы не сканировать при каждом входе).
   Future<List<GitProject>> scan({
-    required String rootPath,
+    required List<String> roots,
     required bool recursive,
     required AppSettings settings,
+    Map<String, GitProject> cached = const {},
+    Duration? cacheTtl,
     ScanProgressCallback? onProgress,
     ScanCancellation? cancellation,
   }) async {
-    final root = Directory(rootPath);
-    if (!await root.exists()) {
-      throw StateError('Директория не найдена: $rootPath');
+    final refs = <_RepoRef>[];
+    final seen = <String>{};
+    for (final rawRoot in roots) {
+      final root = p.normalize(rawRoot.trim());
+      if (root.isEmpty) continue;
+      final dir = Directory(root);
+      if (!await dir.exists()) continue;
+
+      final paths = <String>{};
+      await _collectRepoPaths(
+        dir,
+        recursive: recursive,
+        sink: paths,
+        cancellation: cancellation,
+      );
+      if (cancellation?.isCancelled ?? false) throw ScanCancelledException();
+      for (final path in paths) {
+        if (seen.add(path)) refs.add(_RepoRef(path, root));
+      }
     }
 
-    final repoPaths = <String>{};
-    await _collectRepoPaths(
-      root,
-      recursive: recursive,
-      sink: repoPaths,
-      cancellation: cancellation,
-    );
-    if (cancellation?.isCancelled ?? false) {
-      throw ScanCancelledException();
-    }
-
-    final sortedPaths = repoPaths.toList()..sort();
+    refs.sort((a, b) => a.path.compareTo(b.path));
 
     final projects = <GitProject>[];
     var successCount = 0;
@@ -49,7 +65,7 @@ class GitScanner {
     void emit(int completed, String? currentName, {bool stopped = false}) {
       onProgress?.call(
         ScanProgress(
-          total: sortedPaths.length,
+          total: refs.length,
           completed: completed,
           successCount: successCount,
           errorCount: errorCount,
@@ -60,20 +76,35 @@ class GitScanner {
       );
     }
 
-    emit(0, sortedPaths.isNotEmpty ? p.basename(sortedPaths.first) : null);
+    emit(0, refs.isNotEmpty ? p.basename(refs.first.path) : null);
 
-    for (var i = 0; i < sortedPaths.length; i++) {
+    for (var i = 0; i < refs.length; i++) {
       if (cancellation?.isCancelled ?? false) {
         cancelled = true;
         break;
       }
 
-      final repoPath = sortedPaths[i];
-      final name = p.basename(repoPath);
+      final ref = refs[i];
+      final name = p.basename(ref.path);
       emit(i, name);
 
       try {
-        final info = await _inspectRepo(repoPath, settings, cancellation: cancellation);
+        final prev = cached[ref.path];
+        final GitProject? info;
+        if (_isFresh(prev, cacheTtl)) {
+          info = prev!.copyWith(
+            scanRoot: ref.root,
+            status: GitProjectStatus.idle,
+          );
+        } else {
+          info = await inspectRepo(
+            ref.path,
+            settings,
+            scanRoot: ref.root,
+            previous: prev,
+            cancellation: cancellation,
+          );
+        }
         if (cancellation?.isCancelled ?? false) {
           cancelled = true;
           break;
@@ -95,7 +126,8 @@ class GitScanner {
         projects.add(
           GitProject(
             name: name,
-            path: repoPath,
+            path: ref.path,
+            scanRoot: ref.root,
             scanError: '$e',
             status: GitProjectStatus.error,
             lastMessage: 'Ошибка сканирования',
@@ -104,13 +136,20 @@ class GitScanner {
       }
     }
 
-    emit(cancelled ? projects.length : sortedPaths.length, null, stopped: cancelled);
+    emit(cancelled ? projects.length : refs.length, null, stopped: cancelled);
 
     if (cancelled) {
       throw ScanCancelledException();
     }
 
     return projects;
+  }
+
+  bool _isFresh(GitProject? prev, Duration? ttl) {
+    if (prev == null || ttl == null || prev.scanFailed) return false;
+    final scanned = prev.lastScannedAt;
+    if (scanned == null) return false;
+    return DateTime.now().difference(scanned) < ttl;
   }
 
   Future<void> _collectRepoPaths(
@@ -158,9 +197,12 @@ class GitScanner {
     return Directory(p.join(path, '.git')).exists();
   }
 
-  Future<GitProject?> _inspectRepo(
+  /// Опрашивает один репозиторий и собирает метрики (ветки, размер, коммиты…).
+  Future<GitProject?> inspectRepo(
     String path,
     AppSettings settings, {
+    String? scanRoot,
+    GitProject? previous,
     ScanCancellation? cancellation,
   }) async {
     final name = p.basename(path);
@@ -181,12 +223,16 @@ class GitScanner {
 
       final aheadBehind = await _runner.aheadBehind(path);
       final remotes = await _runner.listRemotes(path);
-      final gitlabRemote = _pickGitlabRemote(remotes, settings);
-      final origin = remotes[settings.gitlabRemoteName] ?? remotes['origin'];
+      final targetRemote = _pickTargetRemote(remotes, settings);
+      final origin = remotes[settings.remoteName] ?? remotes['origin'];
+
+      final commitCount = await _runner.commitCount(path);
+      final lastCommitAt = await _runner.lastCommitDate(path);
+      final sizeBytes = await _runner.repoSizeBytes(path);
 
       var remoteBehind = 0;
       if (defaultBranch != null) {
-        final remote = gitlabRemote ?? await _runner.primaryRemote(path);
+        final remote = targetRemote ?? await _runner.primaryRemote(path);
         if (remote != null) {
           remoteBehind = await _runner.commitsBehindRemote(
             path,
@@ -199,16 +245,29 @@ class GitScanner {
       return GitProject(
         name: name,
         path: path,
+        scanRoot: scanRoot ?? previous?.scanRoot,
         currentBranch: branch,
         defaultBranch: defaultBranch,
         isDirty: dirty,
         ahead: aheadBehind.$1,
         behind: aheadBehind.$2,
         remoteBehindCount: remoteBehind,
-        gitlabRemote: gitlabRemote,
+        targetRemote: targetRemote,
         originUrl: origin,
-        lastMessage: _statusLine(branch, defaultBranch, dirty, aheadBehind, remoteBehind),
+        commitCount: commitCount,
+        sizeBytes: sizeBytes,
+        lastCommitAt: lastCommitAt,
+        lastPulledAt: previous?.lastPulledAt,
+        lastScannedAt: DateTime.now(),
+        lastMessage: _statusLine(
+          branch,
+          defaultBranch,
+          dirty,
+          aheadBehind,
+          remoteBehind,
+        ),
         status: GitProjectStatus.idle,
+        selected: previous?.selected ?? true,
       );
     } on ScanCancelledException {
       rethrow;
@@ -216,6 +275,8 @@ class GitScanner {
       return GitProject(
         name: name,
         path: path,
+        scanRoot: scanRoot ?? previous?.scanRoot,
+        lastScannedAt: DateTime.now(),
         scanError: '$e',
         status: GitProjectStatus.error,
         lastMessage: 'Ошибка: $e',
@@ -223,12 +284,12 @@ class GitScanner {
     }
   }
 
-  String? _pickGitlabRemote(Map<String, String> remotes, AppSettings settings) {
-    final host = settings.gitlabHost.replaceAll(RegExp(r'^https?://'), '');
+  String? _pickTargetRemote(Map<String, String> remotes, AppSettings settings) {
+    final host = settings.remoteHost.replaceAll(RegExp(r'^https?://'), '');
     for (final entry in remotes.entries) {
-      if (entry.value.contains(host)) return entry.key;
+      if (host.isNotEmpty && entry.value.contains(host)) return entry.key;
     }
-    final preferred = settings.gitlabRemoteName;
+    final preferred = settings.remoteName;
     if (remotes.containsKey(preferred)) return preferred;
     if (remotes.containsKey('gitlab')) return 'gitlab';
     if (remotes.containsKey('origin')) return 'origin';

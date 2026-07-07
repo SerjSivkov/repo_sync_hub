@@ -1,47 +1,81 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repo_sync_hub/core/app_settings.dart';
 import 'package:repo_sync_hub/models/git_project.dart';
+import 'package:repo_sync_hub/models/repo_group.dart';
 import 'package:repo_sync_hub/models/scan_progress.dart';
 import 'package:repo_sync_hub/services/git_operations.dart';
 import 'package:repo_sync_hub/services/git_runner.dart';
 
 void main() {
   group('AppSettings', () {
-    test('gitlabBaseUrl adds https when host has no scheme', () {
-      final settings = AppSettings(gitlabHost: 'gitlab.example.com');
-      expect(settings.gitlabBaseUrl, 'https://gitlab.example.com');
+    test('remoteBaseUrl adds https when host has no scheme', () {
+      final settings = AppSettings(remoteHost: 'gitlab.example.com');
+      expect(settings.remoteBaseUrl, 'https://gitlab.example.com');
     });
 
-    test('gitlabBaseUrl keeps explicit scheme', () {
-      final settings = AppSettings(gitlabHost: 'http://gitlab.local');
-      expect(settings.gitlabBaseUrl, 'http://gitlab.local');
+    test('remoteBaseUrl keeps explicit scheme', () {
+      final settings = AppSettings(remoteHost: 'http://gitlab.local');
+      expect(settings.remoteBaseUrl, 'http://gitlab.local');
     });
   });
 
-  group('GitOperations.buildGitlabUrl', () {
+  group('GitOperations.buildRemoteUrl', () {
     final ops = GitOperations(GitRunner());
 
     test('builds group slug url', () {
       final settings = AppSettings(
-        gitlabHost: 'gitlab.com',
-        gitlabGroup: 'mobile',
+        remoteHost: 'gitlab.com',
+        remoteGroup: 'mobile',
       );
       expect(
-        ops.buildGitlabUrl(settings, 'term_conn_vault'),
+        ops.buildRemoteUrl(settings, 'term_conn_vault'),
         'https://gitlab.com/mobile/term_conn_vault.git',
       );
     });
 
     test('embeds oauth token when provided', () {
       final settings = AppSettings(
-        gitlabHost: 'https://gitlab.com',
-        gitlabGroup: 'mobile',
-        gitlabToken: 'secret-token',
+        remoteHost: 'https://gitlab.com',
+        remoteGroup: 'mobile',
+        remoteToken: 'secret-token',
       );
       expect(
-        ops.buildGitlabUrl(settings, 'gdebenz'),
+        ops.buildRemoteUrl(settings, 'gdebenz'),
         'https://oauth2:secret-token@gitlab.com/mobile/gdebenz.git',
       );
+    });
+  });
+
+  group('groupProjects', () {
+    test('abandoned repos sink to the bottom of the group', () {
+      final fresh = GitProject(
+        name: 'fresh',
+        path: '/root/app/fresh',
+        scanRoot: '/root',
+        lastPulledAt: DateTime.now(),
+      );
+      final old = GitProject(
+        name: 'old',
+        path: '/root/app/old',
+        scanRoot: '/root',
+        lastCommitAt: DateTime.now().subtract(const Duration(days: 400)),
+      );
+      final groups = groupProjects([old, fresh]);
+      expect(groups.single.name, 'app');
+      expect(groups.single.projects.map((p) => p.name), ['fresh', 'old']);
+    });
+
+    test('error repos form the first group', () {
+      final ok = GitProject(name: 'ok', path: '/root/a/ok', scanRoot: '/root');
+      final bad = GitProject(
+        name: 'bad',
+        path: '/root/b/bad',
+        scanRoot: '/root',
+        scanError: 'boom',
+      );
+      final groups = groupProjects([ok, bad]);
+      expect(groups.first.isErrorGroup, isTrue);
+      expect(groups.first.projects.single.name, 'bad');
     });
   });
 

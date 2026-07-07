@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 /// Статус операции над одним репозиторием.
 enum GitProjectStatus {
   idle,
@@ -10,11 +12,15 @@ enum GitProjectStatus {
   error,
 }
 
+/// Порог «заброшенности»: репозиторий не обновлялся дольше этого срока.
+const Duration kAbandonedThreshold = Duration(days: 365);
+
 /// Краткая информация о git-репозитории.
 class GitProject {
   GitProject({
     required this.name,
     required this.path,
+    this.scanRoot,
     this.currentBranch,
     this.defaultBranch,
     this.isDirty = false,
@@ -22,8 +28,13 @@ class GitProject {
     this.behind = 0,
     this.remoteBehindCount = 0,
     this.updatesReceived = false,
-    this.gitlabRemote,
+    this.targetRemote,
     this.originUrl,
+    this.commitCount,
+    this.sizeBytes,
+    this.lastCommitAt,
+    this.lastPulledAt,
+    this.lastScannedAt,
     this.lastMessage,
     this.scanError,
     this.status = GitProjectStatus.idle,
@@ -32,23 +43,47 @@ class GitProject {
 
   final String name;
   final String path;
+
+  /// Корневая директория сканирования, к которой относится репозиторий.
+  final String? scanRoot;
+
   final String? currentBranch;
   final String? defaultBranch;
   final bool isDirty;
   final int ahead;
   final int behind;
+
   /// Коммиты на remote, которых нет локально (после fetch).
   final int remoteBehindCount;
+
   /// Pull только что подтянул новые коммиты.
   final bool updatesReceived;
-  final String? gitlabRemote;
+
+  /// Remote, указывающий на настроенную систему-приёмник.
+  final String? targetRemote;
   final String? originUrl;
+
+  /// Всего коммитов в репозитории (rev-list --count HEAD).
+  final int? commitCount;
+
+  /// Размер рабочей копии в байтах.
+  final int? sizeBytes;
+
+  /// Дата последнего коммита в репозитории.
+  final DateTime? lastCommitAt;
+
+  /// Дата последнего успешного стягивания обновлений через приложение.
+  final DateTime? lastPulledAt;
+
+  /// Дата последнего сканирования репозитория.
+  final DateTime? lastScannedAt;
+
   final String? lastMessage;
   final String? scanError;
   final GitProjectStatus status;
   final bool selected;
 
-  bool get hasGitlabRemote => gitlabRemote != null;
+  bool get hasTargetRemote => targetRemote != null;
 
   bool get hasRemoteUpdates => remoteBehindCount > 0;
 
@@ -59,7 +94,38 @@ class GitProject {
     return currentBranch == defaultBranch;
   }
 
+  /// Последняя активность: наш pull либо последний коммит в репозитории.
+  DateTime? get lastActivity {
+    final dates = <DateTime>[?lastPulledAt, ?lastCommitAt];
+    if (dates.isEmpty) return null;
+    dates.sort();
+    return dates.last;
+  }
+
+  /// Репозиторий не обновлялся дольше года — считается заброшенным.
+  bool get isAbandoned {
+    final activity = lastActivity;
+    if (activity == null) return false;
+    return DateTime.now().difference(activity) > kAbandonedThreshold;
+  }
+
+  /// Ключ сортировки внутри группы: по последним стянутым изменениям.
+  DateTime get sortDate =>
+      lastPulledAt ?? lastCommitAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Группа = дочерняя директория на 1 уровень ниже директории сканирования.
+  String get groupName {
+    final root = scanRoot;
+    if (root == null || root.isEmpty) return '(без группы)';
+    final rel = p.relative(path, from: root);
+    final parts =
+        p.split(rel).where((e) => e != '.' && e.isNotEmpty).toList();
+    if (parts.length <= 1) return '(в корне)';
+    return parts.first;
+  }
+
   GitProject copyWith({
+    String? scanRoot,
     String? currentBranch,
     String? defaultBranch,
     bool? isDirty,
@@ -67,8 +133,13 @@ class GitProject {
     int? behind,
     int? remoteBehindCount,
     bool? updatesReceived,
-    String? gitlabRemote,
+    String? targetRemote,
     String? originUrl,
+    int? commitCount,
+    int? sizeBytes,
+    DateTime? lastCommitAt,
+    DateTime? lastPulledAt,
+    DateTime? lastScannedAt,
     String? lastMessage,
     String? scanError,
     GitProjectStatus? status,
@@ -79,19 +150,76 @@ class GitProject {
     return GitProject(
       name: name,
       path: path,
+      scanRoot: scanRoot ?? this.scanRoot,
       currentBranch: currentBranch ?? this.currentBranch,
       defaultBranch: defaultBranch ?? this.defaultBranch,
       isDirty: isDirty ?? this.isDirty,
       ahead: ahead ?? this.ahead,
       behind: behind ?? this.behind,
       remoteBehindCount: remoteBehindCount ?? this.remoteBehindCount,
-      updatesReceived: clearUpdatesReceived ? false : (updatesReceived ?? this.updatesReceived),
-      gitlabRemote: gitlabRemote ?? this.gitlabRemote,
+      updatesReceived: clearUpdatesReceived
+          ? false
+          : (updatesReceived ?? this.updatesReceived),
+      targetRemote: targetRemote ?? this.targetRemote,
       originUrl: originUrl ?? this.originUrl,
+      commitCount: commitCount ?? this.commitCount,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      lastCommitAt: lastCommitAt ?? this.lastCommitAt,
+      lastPulledAt: lastPulledAt ?? this.lastPulledAt,
+      lastScannedAt: lastScannedAt ?? this.lastScannedAt,
       lastMessage: lastMessage ?? this.lastMessage,
       scanError: clearScanError ? null : (scanError ?? this.scanError),
       status: status ?? this.status,
       selected: selected ?? this.selected,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'path': path,
+        'scanRoot': scanRoot,
+        'currentBranch': currentBranch,
+        'defaultBranch': defaultBranch,
+        'isDirty': isDirty,
+        'ahead': ahead,
+        'behind': behind,
+        'remoteBehindCount': remoteBehindCount,
+        'targetRemote': targetRemote,
+        'originUrl': originUrl,
+        'commitCount': commitCount,
+        'sizeBytes': sizeBytes,
+        'lastCommitAt': lastCommitAt?.millisecondsSinceEpoch,
+        'lastPulledAt': lastPulledAt?.millisecondsSinceEpoch,
+        'lastScannedAt': lastScannedAt?.millisecondsSinceEpoch,
+        'lastMessage': lastMessage,
+        'scanError': scanError,
+      };
+
+  static DateTime? _dt(dynamic v) =>
+      v is int ? DateTime.fromMillisecondsSinceEpoch(v) : null;
+
+  factory GitProject.fromJson(Map<String, dynamic> json) {
+    final error = json['scanError'] as String?;
+    return GitProject(
+      name: json['name'] as String? ?? '',
+      path: json['path'] as String? ?? '',
+      scanRoot: json['scanRoot'] as String?,
+      currentBranch: json['currentBranch'] as String?,
+      defaultBranch: json['defaultBranch'] as String?,
+      isDirty: json['isDirty'] as bool? ?? false,
+      ahead: json['ahead'] as int? ?? 0,
+      behind: json['behind'] as int? ?? 0,
+      remoteBehindCount: json['remoteBehindCount'] as int? ?? 0,
+      targetRemote: json['targetRemote'] as String?,
+      originUrl: json['originUrl'] as String?,
+      commitCount: json['commitCount'] as int?,
+      sizeBytes: json['sizeBytes'] as int?,
+      lastCommitAt: _dt(json['lastCommitAt']),
+      lastPulledAt: _dt(json['lastPulledAt']),
+      lastScannedAt: _dt(json['lastScannedAt']),
+      lastMessage: json['lastMessage'] as String?,
+      scanError: error,
+      status: error != null ? GitProjectStatus.error : GitProjectStatus.idle,
     );
   }
 }

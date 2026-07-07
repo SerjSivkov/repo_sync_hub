@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../core/locale_controller.dart';
+
 /// Создание ярлыков на репозитории и открытие их в системе (macOS).
 class RepoShortcut {
   /// Создаёт ярлык (симлинк) на директорию репозитория на Рабочем столе.
@@ -12,11 +14,11 @@ class RepoShortcut {
   }) async {
     final home = Platform.environment['HOME'];
     if (home == null || home.isEmpty) {
-      throw StateError('Не удалось определить домашнюю директорию');
+      throw StateError(l10n.errNoHomeDir);
     }
     final desktop = Directory(p.join(home, 'Desktop'));
     if (!await desktop.exists()) {
-      throw StateError('Папка «Рабочий стол» не найдена: ${desktop.path}');
+      throw StateError(l10n.errNoDesktop(desktop.path));
     }
 
     final name = label ?? p.basename(repoPath);
@@ -37,7 +39,7 @@ class RepoShortcut {
   static Future<void> revealInFinder(String repoPath) async {
     final result = await Process.run('open', [repoPath]);
     if (result.exitCode != 0) {
-      throw StateError('open завершился с ошибкой: ${result.stderr}');
+      throw StateError(l10n.errOpenFailed('${result.stderr}'));
     }
   }
 
@@ -45,7 +47,7 @@ class RepoShortcut {
   static Future<void> openInTerminal(String repoPath) async {
     final result = await Process.run('open', ['-a', 'Terminal', repoPath]);
     if (result.exitCode != 0) {
-      throw StateError('open -a Terminal завершился с ошибкой: ${result.stderr}');
+      throw StateError(l10n.errOpenTerminalFailed('${result.stderr}'));
     }
   }
 
@@ -53,7 +55,7 @@ class RepoShortcut {
   static Future<void> openUrl(String url) async {
     final result = await Process.run('open', [url]);
     if (result.exitCode != 0) {
-      throw StateError('open завершился с ошибкой: ${result.stderr}');
+      throw StateError(l10n.errOpenFailed('${result.stderr}'));
     }
   }
 }

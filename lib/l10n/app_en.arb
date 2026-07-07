@@ -1,0 +1,436 @@
+{
+  "@@locale": "en",
+  "appTitle": "Repo Sync Hub",
+  "splashSubtitle": "Git repositories · pull · GitLab",
+
+  "actionScan": "Scan",
+  "actionStop": "Stop",
+  "actionPull": "Pull",
+  "actionPush": "Push",
+  "actionSync": "Sync",
+  "actionSave": "Save",
+  "actionDirectories": "Directories",
+
+  "tooltipScanStart": "Scan directories and refresh repository statuses",
+  "tooltipScanStop": "Cancel the current scan",
+  "tooltipPull": "Pull updates (pull main/master) for selected repositories",
+  "tooltipPush": "Push selected repositories to the remote",
+  "tooltipSync": "Sync: pull, then push for selected",
+  "tooltipDirectories": "Open settings and choose scan directories",
+  "tooltipSettings": "Settings: directories, remote, theme, schedule",
+  "tooltipThemeCycle": "Theme: {theme} (tap to switch)",
+  "@tooltipThemeCycle": {
+    "placeholders": { "theme": { "type": "String" } }
+  },
+  "tooltipShowTree": "Show as tree",
+  "tooltipShowList": "Show as list",
+  "tooltipLastScan": "Last scan",
+  "tooltipLanguageCycle": "Language: {lang} (tap to switch)",
+  "@tooltipLanguageCycle": {
+    "placeholders": { "lang": { "type": "String" } }
+  },
+
+  "languageRussian": "Русский",
+  "languageEnglish": "English",
+
+  "themeSystem": "system",
+  "themeLight": "light",
+  "themeDark": "dark",
+
+  "selectAll": "Select all",
+  "selectWithUpdatesTooltip": "Select only repositories with updates",
+
+  "menuActions": "Repository actions",
+  "menuPull": "Pull main/master",
+  "menuPush": "Push to remote",
+  "menuSync": "Sync (pull + push)",
+  "menuOpenRemote": "Open origin in browser",
+  "menuShortcut": "Create desktop shortcut",
+  "menuFinder": "Reveal in Finder",
+  "menuTerminal": "Open in Terminal",
+
+  "tooltipOpenRemote": "Open origin in browser: {url}",
+  "@tooltipOpenRemote": {
+    "placeholders": { "url": { "type": "String" } }
+  },
+  "tooltipNoRemote": "Repository has no origin URL",
+
+  "tooltipCommitCount": "Number of commits",
+  "tooltipRepoSize": "Repository size on disk",
+  "tooltipLastPullNever": "Not pulled through the app yet",
+  "tooltipLastPull": "Last pull: {date}",
+  "@tooltipLastPull": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+
+  "tooltipHasUpdates": "Updates available on the remote",
+  "tooltipReceived": "Updates pulled successfully",
+  "tooltipAbandoned": "Not updated for over a year",
+
+  "badgeUpdatesShort": "updates",
+  "badgeReceived": "received",
+  "labelAbandoned": "abandoned",
+  "labelDirty": "dirty",
+  "unknownBranch": "?",
+  "branchLine": "{current} · default {defaultBranch}",
+  "@branchLine": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "defaultBranch": { "type": "String" }
+    }
+  },
+
+  "groupErrors": "⚠ Errors",
+  "groupNoGroup": "(no group)",
+  "groupRoot": "(root)",
+  "groupUpdatesBadge": "↓{count}",
+  "@groupUpdatesBadge": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tooltipGroupUpdates": "Updates available in the group",
+  "groupAbandonedBadge": "abandoned: {count}",
+  "@groupAbandonedBadge": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tooltipGroupAbandoned": "Repositories with no updates for over a year",
+  "tooltipCollapseGroup": "Collapse the group — hide repositories",
+  "tooltipExpandGroup": "Expand the group",
+
+  "updatesBadgeCount": "updates: {count}",
+  "@updatesBadgeCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "rootsNone": "No directories set",
+  "rootsMultiple": "{count} directories: {roots}",
+  "@rootsMultiple": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "roots": { "type": "String" }
+    }
+  },
+  "scanRelative": "scan: {date}",
+  "@scanRelative": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "counter": "{selected} / {total}",
+  "@counter": {
+    "placeholders": {
+      "selected": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "progressStopping": "Stopping…",
+  "progressScanningName": "Scanning: {name}",
+  "@progressScanningName": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "progressSearching": "Searching for repositories…",
+  "progressScanning": "Scanning…",
+  "progressOkErrors": "OK: {ok} · errors: {errors}",
+  "@progressOkErrors": {
+    "placeholders": {
+      "ok": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "doneStopped": "Stopped: OK {ok}, errors {errors}, scanned {done}/{total}",
+  "@doneStopped": {
+    "placeholders": {
+      "ok": { "type": "int" },
+      "errors": { "type": "int" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "doneScan": "Scan: OK {ok}, errors {errors}",
+  "@doneScan": {
+    "placeholders": {
+      "ok": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+
+  "emptyNoRoots": "Choose directories with git projects in settings",
+  "emptyNotFound": "No repositories found — start a scan",
+
+  "logTitle": "Log",
+  "logClear": "Clear",
+
+  "logCacheLoaded": "Loaded from cache: {count} repositories (scan on startup is off)",
+  "@logCacheLoaded": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "logScheduledScan": "Scheduled scan…",
+  "logScheduleEnabled": "Schedule enabled: every {minutes} min",
+  "@logScheduleEnabled": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "logStoppingScan": "Stopping the scan…",
+  "logNoRoots": "Set project directories in settings",
+  "logNoSelection": "No projects selected",
+  "logScanStart": "Scanning: {roots}…",
+  "@logScanStart": {
+    "placeholders": { "roots": { "type": "String" } }
+  },
+  "logScanDone": "Done: {count} repositories, OK {ok}, errors {errors}",
+  "@logScanDone": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "ok": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "logScanDoneUpdates": "Done: {count} repositories, OK {ok}, errors {errors}, updates available: {updates}",
+  "@logScanDoneUpdates": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "ok": { "type": "int" },
+      "errors": { "type": "int" },
+      "updates": { "type": "int" }
+    }
+  },
+  "logScanStopped": "Scan stopped: {done} of {total}, OK {ok}, errors {errors}",
+  "@logScanStopped": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" },
+      "ok": { "type": "int" },
+      "errors": { "type": "int" }
+    }
+  },
+  "logScanError": "Scan error: {error}",
+  "@logScanError": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "logOperationHeader": "=== {label} ({count}) ===",
+  "@logOperationHeader": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "logProjectMessage": "[{name}] {message}",
+  "@logProjectMessage": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "message": { "type": "String" }
+    }
+  },
+  "logProjectError": "[{name}] error: {error}",
+  "@logProjectError": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "logSelectedWithUpdates": "Repositories with updates selected: {count}",
+  "@logSelectedWithUpdates": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "logShortcutCreated": "[{name}] shortcut created: {path}",
+  "@logShortcutCreated": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "logShortcutFailed": "[{name}] failed to create shortcut: {error}",
+  "@logShortcutFailed": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "logFinderError": "[{name}] Finder: {error}",
+  "@logFinderError": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "logTerminalError": "[{name}] Terminal: {error}",
+  "@logTerminalError": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "logNoRemoteLink": "[{name}] no origin link to open",
+  "@logNoRemoteLink": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "logOpenedRemote": "[{name}] opened in browser: {url}",
+  "@logOpenedRemote": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "url": { "type": "String" }
+    }
+  },
+  "logOpenRemoteFailed": "[{name}] failed to open the link: {error}",
+  "@logOpenRemoteFailed": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+
+  "snackShortcutCreated": "Shortcut created on the Desktop",
+  "snackShortcutFailed": "Failed to create shortcut: {error}",
+  "@snackShortcutFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "snackNoRemote": "Repository has no origin URL",
+  "snackOpenRemoteFailed": "Failed to open the link: {error}",
+  "@snackOpenRemoteFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "labelPullMasterMain": "Pull main/master",
+  "labelPull": "Pull",
+  "labelPush": "Push",
+  "labelSync": "Sync",
+
+  "settingsTitle": "Settings",
+  "settingsScanDirs": "Scan directories",
+  "settingsAddDir": "Add",
+  "settingsAddDirTooltip": "Add a directory to search for git repositories",
+  "settingsNoDirs": "No directories selected",
+  "settingsRemoveDir": "Remove directory from the list",
+  "settingsAppearance": "Appearance",
+  "settingsTheme": "Theme",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsLanguage": "Language",
+  "settingsViewMode": "List view",
+  "settingsViewList": "List",
+  "settingsViewTree": "Tree",
+  "settingsRemoteSection": "Remote (push)",
+  "settingsHost": "Host",
+  "settingsHostHint": "gitlab.com / gitea.local / git.company.ru",
+  "settingsHostHelper": "Any git system: GitLab, Gitea, Bitbucket, custom server",
+  "settingsGroup": "Group / namespace",
+  "settingsRemoteName": "Remote name for push",
+  "settingsToken": "Token (optional)",
+  "settingsTokenHelper": "For the remote URL on push; stored locally",
+  "settingsScanSection": "Scanning",
+  "settingsRecursive": "Recursive scan",
+  "settingsRecursiveSub": "Search for .git in nested folders",
+  "settingsAutoScan": "Scan on startup",
+  "settingsAutoScanSub": "Otherwise show data from the last scan cache",
+  "settingsCacheTtl": "Scan cache, min",
+  "settingsCacheTtlHelper": "Fresh repositories (within this period) are not rescanned. 0 — always scan",
+  "settingsConcurrency": "Scan concurrency",
+  "settingsConcurrencyHelper": "How many repositories to scan at once (1–16)",
+  "settingsFetch": "fetch before pull",
+  "settingsStash": "stash before checkout",
+  "settingsStashSub": "If there are uncommitted changes",
+  "settingsPushTags": "Push tags",
+  "settingsScheduleSection": "Scheduled scan",
+  "settingsScheduleEnabled": "Run automatically",
+  "settingsScheduleEnabledSub": "Periodically repeat the scan",
+  "settingsInterval": "Interval, min",
+  "settingsIntervalHelper": "How often to repeat the scan",
+
+  "fmtNever": "never",
+  "fmtJustNow": "just now",
+  "fmtMinutesAgo": "{count,plural, one{{count} minute ago} other{{count} minutes ago}}",
+  "@fmtMinutesAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "fmtHoursAgo": "{count,plural, one{{count} hour ago} other{{count} hours ago}}",
+  "@fmtHoursAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "fmtDaysAgo": "{count,plural, one{{count} day ago} other{{count} days ago}}",
+  "@fmtDaysAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "fmtWeeksAgo": "{count,plural, one{{count} week ago} other{{count} weeks ago}}",
+  "@fmtWeeksAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "fmtMonthsAgo": "{count,plural, one{{count} month ago} other{{count} months ago}}",
+  "@fmtMonthsAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "fmtYearsAgo": "{count,plural, one{{count} year ago} other{{count} years ago}}",
+  "@fmtYearsAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "unitB": "B",
+  "unitKB": "KB",
+  "unitMB": "MB",
+  "unitGB": "GB",
+  "unitTB": "TB",
+
+  "opNoDefaultBranch": "main/master branch not found",
+  "opUpdatesReceived": "updates received",
+  "opUpToDate": "up to date",
+  "opNoBranchPush": "No main/master branch to push",
+  "opPushOk": "push ok",
+  "opRemoteAlready": "remote {name} already points to the target system",
+  "@opRemoteAlready": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "opLogPull": "[{name}] pull {branch}",
+  "@opLogPull": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "branch": { "type": "String" }
+    }
+  },
+  "opLogPush": "[{name}] push → remote",
+  "@opLogPush": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "opLogSync": "[{name}] sync (pull + push)",
+  "@opLogSync": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+
+  "scanErrorShort": "Scan error",
+  "scanErrorPrefix": "Error: {error}",
+  "@scanErrorPrefix": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "statusBranch": "branch {branch}",
+  "@statusBranch": {
+    "placeholders": { "branch": { "type": "String" } }
+  },
+  "statusDefault": "default {branch}",
+  "@statusDefault": {
+    "placeholders": { "branch": { "type": "String" } }
+  },
+  "statusDirty": "has changes",
+  "statusUpdates": "updates: {count}",
+  "@statusUpdates": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "statusAhead": "+{count}",
+  "@statusAhead": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "statusBehind": "-{count}",
+  "@statusBehind": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "statusOk": "ok",
+
+  "errNoHomeDir": "Could not determine the home directory",
+  "errNoDesktop": "Desktop folder not found: {path}",
+  "@errNoDesktop": {
+    "placeholders": { "path": { "type": "String" } }
+  },
+  "errOpenFailed": "open failed with an error: {error}",
+  "@errOpenFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "errOpenTerminalFailed": "open -a Terminal failed with an error: {error}",
+  "@errOpenTerminalFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "exceptionScanCancelled": "Scan stopped"
+}

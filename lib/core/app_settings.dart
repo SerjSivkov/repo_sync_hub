@@ -20,6 +20,7 @@ class AppSettings {
     this.pushTags = false,
     this.themeMode = ThemeMode.system,
     this.viewMode = RepoViewMode.list,
+    this.languageCode = 'ru',
     this.autoScanOnStartup = false,
     this.scanCacheTtlMinutes = 60,
     this.scanConcurrency = 4,
@@ -43,6 +44,7 @@ class AppSettings {
   static const _keyPushTags = 'push_tags';
   static const _keyTheme = 'theme_mode';
   static const _keyView = 'view_mode';
+  static const _keyLanguage = 'language_code';
   static const _keyAutoScan = 'auto_scan_startup';
   static const _keyCacheTtl = 'scan_cache_ttl';
   static const _keyConcurrency = 'scan_concurrency';
@@ -67,6 +69,9 @@ class AppSettings {
 
   final ThemeMode themeMode;
   final RepoViewMode viewMode;
+
+  /// Код языка интерфейса: 'ru' или 'en'.
+  final String languageCode;
 
   /// Сканировать автоматически при запуске (иначе — показ из кэша).
   final bool autoScanOnStartup;
@@ -106,6 +111,7 @@ class AppSettings {
     bool? pushTags,
     ThemeMode? themeMode,
     RepoViewMode? viewMode,
+    String? languageCode,
     bool? autoScanOnStartup,
     int? scanCacheTtlMinutes,
     int? scanConcurrency,
@@ -124,6 +130,7 @@ class AppSettings {
       pushTags: pushTags ?? this.pushTags,
       themeMode: themeMode ?? this.themeMode,
       viewMode: viewMode ?? this.viewMode,
+      languageCode: languageCode ?? this.languageCode,
       autoScanOnStartup: autoScanOnStartup ?? this.autoScanOnStartup,
       scanCacheTtlMinutes: scanCacheTtlMinutes ?? this.scanCacheTtlMinutes,
       scanConcurrency: scanConcurrency ?? this.scanConcurrency,
@@ -144,6 +151,9 @@ class AppSettings {
         ThemeMode.dark => 'dark',
         ThemeMode.system => 'system',
       };
+
+  /// Приводит сохранённый код языка к поддерживаемому ('ru' по умолчанию).
+  static String _normalizeLang(String? v) => v == 'en' ? 'en' : 'ru';
 
   static Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -172,6 +182,7 @@ class AppSettings {
       viewMode: prefs.getString(_keyView) == 'tree'
           ? RepoViewMode.tree
           : RepoViewMode.list,
+      languageCode: _normalizeLang(prefs.getString(_keyLanguage)),
       autoScanOnStartup: prefs.getBool(_keyAutoScan) ?? false,
       scanCacheTtlMinutes: prefs.getInt(_keyCacheTtl) ?? 60,
       scanConcurrency: prefs.getInt(_keyConcurrency) ?? 4,
@@ -194,6 +205,7 @@ class AppSettings {
     await prefs.setString(_keyTheme, _themeTo(themeMode));
     await prefs.setString(
         _keyView, viewMode == RepoViewMode.tree ? 'tree' : 'list');
+    await prefs.setString(_keyLanguage, languageCode);
     await prefs.setBool(_keyAutoScan, autoScanOnStartup);
     await prefs.setInt(_keyCacheTtl, scanCacheTtlMinutes);
     await prefs.setInt(_keyConcurrency, scanConcurrency);
@@ -212,6 +224,7 @@ class AppSettings {
         'pushTags': pushTags,
         'themeMode': _themeTo(themeMode),
         'viewMode': viewMode.name,
+      'languageCode': languageCode,
       'autoScanOnStartup': autoScanOnStartup,
       'scanCacheTtlMinutes': scanCacheTtlMinutes,
       'scanConcurrency': scanConcurrency,

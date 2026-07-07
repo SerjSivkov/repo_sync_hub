@@ -1,3 +1,5 @@
+import '../core/locale_controller.dart';
+
 /// Сигнал остановки длительного сканирования.
 class ScanCancellation {
   bool _cancelled = false;
@@ -9,5 +11,5 @@ class ScanCancellation {
 
 class ScanCancelledException implements Exception {
   @override
-  String toString() => 'Сканирование остановлено';
+  String toString() => l10n.exceptionScanCancelled;
 }

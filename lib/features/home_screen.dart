@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../core/app_settings.dart';
 import '../core/format.dart';
+import '../core/locale_controller.dart';
 import '../core/theme_controller.dart';
+import '../l10n/app_localizations.dart';
 import '../models/git_project.dart';
 import '../models/repo_group.dart';
 import '../models/scan_progress.dart';
@@ -66,8 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (settings.autoScanOnStartup || cached.isEmpty) {
         await _scan();
       } else {
-        _log('Загружено из кэша: ${cached.length} репозиториев '
-            '(сканирование при запуске отключено)');
+        _log(l10n.logCacheLoaded(cached.length));
       }
     }
   }
@@ -81,11 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _scheduleTimer = Timer.periodic(interval, (_) {
       if (_busy || _scanning) return;
       if (!_settings.hasRoots) return;
-      _log('Плановое сканирование (по расписанию)…');
+      _log(l10n.logScheduledScan);
       _scan();
     });
-    _log('Расписание включено: каждые '
-        '${_settings.scheduleIntervalMinutes} мин');
+    _log(l10n.logScheduleEnabled(_settings.scheduleIntervalMinutes));
   }
 
   void _log(String line) {
@@ -102,14 +102,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _stopScan() {
     if (!_scanning) return;
     _scanCancellation?.cancel();
-    _log('Остановка сканирования…');
+    _log(l10n.logStoppingScan);
   }
 
   Future<void> _persistCache() => _cache.save(_projects);
 
   Future<void> _scan() async {
     if (!_settings.hasRoots) {
-      _log('Укажите директории с проектами в настройках');
+      _log(l10n.logNoRoots);
       return;
     }
     final cancellation = ScanCancellation();
@@ -125,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
         errorCount: 0,
       );
     });
-    _log('Сканирование: ${_settings.projectsRoots.join(', ')}…');
+    _log(l10n.logScanStart(_settings.projectsRoots.join(', ')));
     try {
       final projects = await _scanner.scan(
         roots: _settings.projectsRoots,
@@ -158,11 +158,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       await _persistCache();
       final withUpdates = projects.where((p) => p.hasRemoteUpdates).length;
+      final ok = projects.where((p) => !p.scanFailed).length;
+      final errors = projects.where((p) => p.scanFailed).length;
       _log(
-        'Готово: ${projects.length} репозиториев, '
-        'OK ${projects.where((p) => !p.scanFailed).length}, '
-        'ошибок ${projects.where((p) => p.scanFailed).length}'
-        '${withUpdates > 0 ? ', обновлений доступно: $withUpdates' : ''}',
+        withUpdates > 0
+            ? l10n.logScanDoneUpdates(
+                projects.length, ok, errors, withUpdates)
+            : l10n.logScanDone(projects.length, ok, errors),
       );
     } on ScanCancelledException {
       if (!mounted) return;
@@ -170,8 +172,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final scanned = _projects.length;
       final total = progress?.total ?? scanned;
       _log(
-        'Сканирование остановлено: $scanned из $total, '
-        'OK ${progress?.successCount ?? 0}, ошибок ${progress?.errorCount ?? 0}',
+        l10n.logScanStopped(
+          scanned,
+          total,
+          progress?.successCount ?? 0,
+          progress?.errorCount ?? 0,
+        ),
       );
       await _persistCache();
       if (progress != null) {
@@ -187,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      _log('Ошибка сканирования: $e');
+      _log(l10n.logScanError('$e'));
     } finally {
       if (mounted) {
         setState(() {
@@ -205,14 +211,14 @@ class _HomeScreenState extends State<HomeScreen> {
     Future<GitProject> Function(GitProject p) action,
   ) async {
     if (targets.isEmpty) {
-      _log('Нет выбранных проектов');
+      _log(l10n.logNoSelection);
       return;
     }
     setState(() {
       _busy = true;
       _scanProgress = null;
     });
-    _log('=== $label (${targets.length}) ===');
+    _log(l10n.logOperationHeader(label, targets.length));
     for (final project in targets) {
       final index = _projects.indexWhere((p) => p.path == project.path);
       if (index < 0) continue;
@@ -226,7 +232,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final updated = await action(project);
         if (!mounted) return;
         setState(() => _projects[index] = updated);
-        _log('[${project.name}] ${updated.lastMessage ?? updated.status.name}');
+        _log(l10n.logProjectMessage(
+          project.name,
+          updated.lastMessage ?? updated.status.name,
+        ));
       } catch (e) {
         if (!mounted) return;
         setState(() {
@@ -235,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
             lastMessage: '$e',
           );
         });
-        _log('[${project.name}] ошибка: $e');
+        _log(l10n.logProjectError(project.name, '$e'));
       }
     }
     await _persistCache();
@@ -283,6 +292,14 @@ class _HomeScreenState extends State<HomeScreen> {
     await updated.save();
   }
 
+  Future<void> _cycleLanguage() async {
+    final next = _settings.languageCode == 'ru' ? 'en' : 'ru';
+    final updated = _settings.copyWith(languageCode: next);
+    setState(() => _settings = updated);
+    appLocale.value = Locale(next);
+    await updated.save();
+  }
+
   Future<void> _toggleView() async {
     final next = _settings.viewMode == RepoViewMode.list
         ? RepoViewMode.tree
@@ -307,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .toList();
     });
     final count = _projects.where((p) => p.hasRemoteUpdates).length;
-    _log('Выбрано репозиториев с обновлениями: $count');
+    _log(l10n.logSelectedWithUpdates(count));
   }
 
   void _toggleProject(String path, bool? value) {
@@ -320,30 +337,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _pull(GitProject p) => _runOnProjects(
         [p],
-        'Pull',
+        l10n.labelPull,
         (x) => _ops.pullDefaultBranch(x, _settings, log: _log),
       );
 
   void _push(GitProject p) => _runOnProjects(
         [p],
-        'Push',
+        l10n.labelPush,
         (x) => _ops.pushToGitlab(x, _settings, log: _log),
       );
 
   void _sync(GitProject p) => _runOnProjects(
         [p],
-        'Sync',
+        l10n.labelSync,
         (x) => _ops.syncProject(x, _settings, log: _log),
       );
 
   Future<void> _createShortcut(GitProject p) async {
     try {
       final path = await RepoShortcut.createDesktopShortcut(p.path);
-      _log('[${p.name}] ярлык создан: $path');
-      _toast('Ярлык создан на Рабочем столе');
+      _log(l10n.logShortcutCreated(p.name, path));
+      _toast(l10n.snackShortcutCreated);
     } catch (e) {
-      _log('[${p.name}] не удалось создать ярлык: $e');
-      _toast('Не удалось создать ярлык: $e');
+      _log(l10n.logShortcutFailed(p.name, '$e'));
+      _toast(l10n.snackShortcutFailed('$e'));
     }
   }
 
@@ -351,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await RepoShortcut.revealInFinder(p.path);
     } catch (e) {
-      _log('[${p.name}] Finder: $e');
+      _log(l10n.logFinderError(p.name, '$e'));
     }
   }
 
@@ -359,23 +376,23 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await RepoShortcut.openInTerminal(p.path);
     } catch (e) {
-      _log('[${p.name}] Terminal: $e');
+      _log(l10n.logTerminalError(p.name, '$e'));
     }
   }
 
   Future<void> _openRemote(GitProject p) async {
     final url = p.remoteWebUrl;
     if (url == null) {
-      _log('[${p.name}] нет ссылки origin для открытия');
-      _toast('У репозитория нет origin-ссылки');
+      _log(l10n.logNoRemoteLink(p.name));
+      _toast(l10n.snackNoRemote);
       return;
     }
     try {
       await RepoShortcut.openUrl(url);
-      _log('[${p.name}] открыт в браузере: $url');
+      _log(l10n.logOpenedRemote(p.name, url));
     } catch (e) {
-      _log('[${p.name}] не удалось открыть ссылку: $e');
-      _toast('Не удалось открыть ссылку: $e');
+      _log(l10n.logOpenRemoteFailed(p.name, '$e'));
+      _toast(l10n.snackOpenRemoteFailed('$e'));
     }
   }
 
@@ -389,26 +406,31 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final selectedCount = _selectedProjects.length;
     final isScanning = _scanning;
     final groups = groupProjects(_projects);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Repo Sync Hub'),
+        title: Text(l10n.appTitle),
         actions: [
           IconButton(
+            tooltip: l10n.tooltipLanguageCycle(_languageLabel(l10n)),
+            onPressed: _cycleLanguage,
+            icon: const Icon(Icons.language),
+          ),
+          IconButton(
             tooltip: _settings.viewMode == RepoViewMode.list
-                ? 'Показать деревом'
-                : 'Показать построчно',
+                ? l10n.tooltipShowTree
+                : l10n.tooltipShowList,
             onPressed: _toggleView,
             icon: Icon(_settings.viewMode == RepoViewMode.list
                 ? Icons.account_tree
                 : Icons.view_list),
           ),
           IconButton(
-            tooltip: 'Тема: ${_themeLabel(_settings.themeMode)} '
-                '(нажмите для переключения)',
+            tooltip: l10n.tooltipThemeCycle(_themeLabel(l10n, _settings.themeMode)),
             onPressed: _cycleTheme,
             icon: Icon(switch (_settings.themeMode) {
               ThemeMode.system => Icons.brightness_auto,
@@ -417,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }),
           ),
           IconButton(
-            tooltip: 'Настройки: директории, приёмник, тема, расписание',
+            tooltip: l10n.tooltipSettings,
             onPressed: _busy ? null : _openSettings,
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -436,17 +458,17 @@ class _HomeScreenState extends State<HomeScreen> {
             onScan: _scan,
             onPull: () => _runOnProjects(
               _selectedProjects,
-              'Pull main/master',
+              l10n.labelPullMasterMain,
               (p) => _ops.pullDefaultBranch(p, _settings, log: _log),
             ),
             onPush: () => _runOnProjects(
               _selectedProjects,
-              'Push',
+              l10n.labelPush,
               (p) => _ops.pushToGitlab(p, _settings, log: _log),
             ),
             onSync: () => _runOnProjects(
               _selectedProjects,
-              'Sync',
+              l10n.labelSync,
               (p) => _ops.syncProject(p, _settings, log: _log),
             ),
             onStopScan: _stopScan,
@@ -458,8 +480,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? Center(
                     child: Text(
                       !_settings.hasRoots
-                          ? 'Выберите директории с git-проектами в настройках'
-                          : 'Репозитории не найдены — запустите сканирование',
+                          ? l10n.emptyNoRoots
+                          : l10n.emptyNotFound,
                       style: theme.textTheme.bodyLarge,
                       textAlign: TextAlign.center,
                     ),
@@ -492,11 +514,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-String _themeLabel(ThemeMode m) => switch (m) {
-      ThemeMode.system => 'системная',
-      ThemeMode.light => 'светлая',
-      ThemeMode.dark => 'тёмная',
+String _themeLabel(AppLocalizations l10n, ThemeMode m) => switch (m) {
+      ThemeMode.system => l10n.themeSystem,
+      ThemeMode.light => l10n.themeLight,
+      ThemeMode.dark => l10n.themeDark,
     };
+
+String _languageLabel(AppLocalizations l10n) =>
+    appLocale.value.languageCode == 'en'
+        ? l10n.languageEnglish
+        : l10n.languageRussian;
 
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
@@ -532,6 +559,7 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final progress = scanProgress;
     final roots = settings.projectsRoots;
 
@@ -547,10 +575,10 @@ class _Toolbar extends StatelessWidget {
                 Expanded(
                   child: Text(
                     roots.isEmpty
-                        ? 'Директории не заданы'
+                        ? l10n.rootsNone
                         : roots.length == 1
                             ? roots.first
-                            : '${roots.length} директорий: ${roots.join(', ')}',
+                            : l10n.rootsMultiple(roots.length, roots.join(', ')),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium,
@@ -560,14 +588,14 @@ class _Toolbar extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: Tooltip(
-                      message: 'Последнее сканирование',
+                      message: l10n.tooltipLastScan,
                       child: Text(
-                        'скан: ${Format.relativeDate(lastScanAt)}',
+                        l10n.scanRelative(Format.relativeDate(l10n, lastScanAt)),
                         style: theme.textTheme.bodySmall,
                       ),
                     ),
                   ),
-                Text('$selectedCount / $totalCount'),
+                Text(l10n.counter(selectedCount, totalCount)),
               ],
             ),
             if (isScanning && progress != null) ...[
@@ -577,12 +605,12 @@ class _Toolbar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       progress.cancelled
-                          ? 'Остановка…'
+                          ? l10n.progressStopping
                           : progress.currentName != null
-                              ? 'Сканирование: ${progress.currentName}'
+                              ? l10n.progressScanningName(progress.currentName!)
                               : progress.total == 0
-                                  ? 'Поиск репозиториев…'
-                                  : 'Сканирование…',
+                                  ? l10n.progressSearching
+                                  : l10n.progressScanning,
                       style: theme.textTheme.bodySmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -605,7 +633,7 @@ class _Toolbar extends StatelessWidget {
                 ),
               const SizedBox(height: 6),
               Text(
-                'OK: ${progress.successCount} · ошибок: ${progress.errorCount}',
+                l10n.progressOkErrors(progress.successCount, progress.errorCount),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -614,9 +642,13 @@ class _Toolbar extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 progress.cancelled
-                    ? 'Остановлено: OK ${progress.successCount}, ошибок ${progress.errorCount}, '
-                        'просканировано ${progress.completed}/${progress.total}'
-                    : 'Сканирование: OK ${progress.successCount}, ошибок ${progress.errorCount}',
+                    ? l10n.doneStopped(
+                        progress.successCount,
+                        progress.errorCount,
+                        progress.completed,
+                        progress.total,
+                      )
+                    : l10n.doneScan(progress.successCount, progress.errorCount),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -628,48 +660,44 @@ class _Toolbar extends StatelessWidget {
               runSpacing: 8,
               children: [
                 Tooltip(
-                  message: 'Открыть настройки и выбрать директории сканирования',
+                  message: l10n.tooltipDirectories,
                   child: FilledButton.tonalIcon(
                     onPressed: busy ? null : onSettings,
                     icon: const Icon(Icons.folder_open),
-                    label: const Text('Директории'),
+                    label: Text(l10n.actionDirectories),
                   ),
                 ),
                 Tooltip(
-                  message: isScanning
-                      ? 'Прервать текущее сканирование'
-                      : 'Просканировать директории и обновить статусы репозиториев',
+                  message: isScanning ? l10n.tooltipScanStop : l10n.tooltipScanStart,
                   child: FilledButton.tonalIcon(
                     onPressed:
                         isScanning ? onStopScan : (busy ? null : onScan),
                     icon: Icon(isScanning ? Icons.stop_rounded : Icons.refresh),
-                    label: Text(isScanning ? 'Остановить' : 'Сканировать'),
+                    label: Text(isScanning ? l10n.actionStop : l10n.actionScan),
                   ),
                 ),
                 Tooltip(
-                  message:
-                      'Стянуть обновления (pull main/master) для выбранных репозиториев',
+                  message: l10n.tooltipPull,
                   child: FilledButton.icon(
                     onPressed: busy || selectedCount == 0 ? null : onPull,
                     icon: const Icon(Icons.download),
-                    label: const Text('Pull'),
+                    label: Text(l10n.actionPull),
                   ),
                 ),
                 Tooltip(
-                  message:
-                      'Отправить (push) выбранные репозитории в систему-приёмник',
+                  message: l10n.tooltipPush,
                   child: FilledButton.icon(
                     onPressed: busy || selectedCount == 0 ? null : onPush,
                     icon: const Icon(Icons.upload),
-                    label: const Text('Push'),
+                    label: Text(l10n.actionPush),
                   ),
                 ),
                 Tooltip(
-                  message: 'Синхронизировать: pull, затем push для выбранных',
+                  message: l10n.tooltipSync,
                   child: FilledButton.icon(
                     onPressed: busy || selectedCount == 0 ? null : onSync,
                     icon: const Icon(Icons.sync),
-                    label: const Text('Sync'),
+                    label: Text(l10n.actionSync),
                   ),
                 ),
               ],
@@ -755,14 +783,14 @@ class _ProjectListAreaState extends State<_ProjectListArea> {
           onChanged: widget.busy ? null : widget.onToggleAll,
           title: Row(
             children: [
-              const Text('Выбрать все'),
+              Text(AppLocalizations.of(context).selectAll),
               if (updatesCount > 0) ...[
                 const SizedBox(width: 12),
                 _Badge(
-                  label: 'обновлений: $updatesCount',
+                  label: AppLocalizations.of(context).updatesBadgeCount(updatesCount),
                   icon: Icons.system_update_alt,
                   color: Colors.orange.shade700,
-                  tooltip: 'Выбрать только репозитории с обновлениями',
+                  tooltip: AppLocalizations.of(context).selectWithUpdatesTooltip,
                   onTap: widget.busy ? null : widget.onSelectWithUpdates,
                 ),
               ],
@@ -839,8 +867,8 @@ class _GroupHeader extends StatelessWidget {
           : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       child: Tooltip(
         message: collapsed
-            ? 'Развернуть группу'
-            : 'Свернуть группу — скрыть репозитории',
+            ? AppLocalizations.of(context).tooltipExpandGroup
+            : AppLocalizations.of(context).tooltipCollapseGroup,
         child: InkWell(
           onTap: onTap,
           child: Padding(
@@ -877,11 +905,12 @@ class _GroupTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Flexible(
           child: Text(
-            group.name,
+            localizedGroupName(l10n, group.name),
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: group.isErrorGroup ? theme.colorScheme.error : null,
@@ -896,19 +925,19 @@ class _GroupTitle extends StatelessWidget {
         if (group.updatesCount > 0) ...[
           const SizedBox(width: 8),
           _Badge(
-            label: '↓${group.updatesCount}',
+            label: l10n.groupUpdatesBadge(group.updatesCount),
             icon: Icons.arrow_downward_rounded,
             color: Colors.orange.shade700,
-            tooltip: 'Доступно обновлений в группе',
+            tooltip: l10n.tooltipGroupUpdates,
           ),
         ],
         if (group.abandonedCount > 0) ...[
           const SizedBox(width: 8),
           _Badge(
-            label: 'заброшено: ${group.abandonedCount}',
+            label: l10n.groupAbandonedBadge(group.abandonedCount),
             icon: Icons.hourglass_bottom,
             color: Colors.blueGrey,
-            tooltip: 'Репозитории без обновлений больше года',
+            tooltip: l10n.tooltipGroupAbandoned,
           ),
         ],
       ],
@@ -944,6 +973,8 @@ class _ProjectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final unknown = l10n.unknownBranch;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -974,37 +1005,36 @@ class _ProjectTile extends StatelessWidget {
                       _Badge(
                         label: project.remoteBehindCount > 0
                             ? '+${project.remoteBehindCount}'
-                            : 'обновления',
+                            : l10n.badgeUpdatesShort,
                         icon: Icons.arrow_downward_rounded,
                         color: theme.colorScheme.tertiary,
-                        tooltip: 'Доступны обновления на remote',
+                        tooltip: l10n.tooltipHasUpdates,
                       ),
                     ],
                     if (project.updatesReceived) ...[
                       const SizedBox(width: 8),
                       _Badge(
-                        label: 'получены',
+                        label: l10n.badgeReceived,
                         icon: Icons.check_circle_outline,
                         color: Colors.green.shade700,
-                        tooltip: 'Обновления успешно подтянуты',
+                        tooltip: l10n.tooltipReceived,
                       ),
                     ],
                     if (project.isAbandoned) ...[
                       const SizedBox(width: 8),
                       _Badge(
-                        label: 'заброшен',
+                        label: l10n.labelAbandoned,
                         icon: Icons.hourglass_bottom,
                         color: Colors.blueGrey,
-                        tooltip: 'Не обновлялся больше года',
+                        tooltip: l10n.tooltipAbandoned,
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${project.currentBranch ?? '?'} · default '
-                  '${project.defaultBranch ?? '?'}'
-                  '${project.isDirty ? ' · dirty' : ''}',
+                  '${l10n.branchLine(project.currentBranch ?? unknown, project.defaultBranch ?? unknown)}'
+                  '${project.isDirty ? ' · ${l10n.labelDirty}' : ''}',
                   style: theme.textTheme.bodySmall,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1029,26 +1059,25 @@ class _ProjectTile extends StatelessWidget {
           _MetricCell(
             icon: Icons.commit,
             value: Format.count(project.commitCount),
-            tooltip: 'Количество коммитов',
+            tooltip: l10n.tooltipCommitCount,
           ),
           _MetricCell(
             icon: Icons.sd_storage_outlined,
-            value: Format.bytes(project.sizeBytes),
-            tooltip: 'Размер репозитория на диске',
+            value: Format.bytes(l10n, project.sizeBytes),
+            tooltip: l10n.tooltipRepoSize,
           ),
           _MetricCell(
             icon: Icons.download_done,
-            value: Format.relativeDate(project.lastPulledAt),
+            value: Format.relativeDate(l10n, project.lastPulledAt),
             tooltip: project.lastPulledAt == null
-                ? 'Обновления через приложение ещё не стягивались'
-                : 'Последнее стягивание: '
-                    '${Format.dateTime(project.lastPulledAt)}',
+                ? l10n.tooltipLastPullNever
+                : l10n.tooltipLastPull(Format.dateTime(project.lastPulledAt)),
             width: 110,
           ),
           IconButton(
             tooltip: project.remoteWebUrl != null
-                ? 'Открыть origin в браузере: ${project.remoteWebUrl}'
-                : 'У репозитория нет origin-ссылки',
+                ? l10n.tooltipOpenRemote(project.remoteWebUrl!)
+                : l10n.tooltipNoRemote,
             onPressed:
                 busy || project.remoteWebUrl == null ? null : onOpenRemote,
             icon: const Icon(Icons.open_in_browser),
@@ -1134,9 +1163,10 @@ class _ProjectMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PopupMenuButton<String>(
       enabled: !busy,
-      tooltip: 'Действия с репозиторием',
+      tooltip: l10n.menuActions,
       onSelected: (value) {
         switch (value) {
           case 'pull':
@@ -1156,22 +1186,18 @@ class _ProjectMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(value: 'pull', child: Text('Pull main/master')),
-        const PopupMenuItem(value: 'push', child: Text('Push в приёмник')),
-        const PopupMenuItem(value: 'sync', child: Text('Sync (pull + push)')),
+        PopupMenuItem(value: 'pull', child: Text(l10n.menuPull)),
+        PopupMenuItem(value: 'push', child: Text(l10n.menuPush)),
+        PopupMenuItem(value: 'sync', child: Text(l10n.menuSync)),
         const PopupMenuDivider(),
         PopupMenuItem(
           value: 'remote',
           enabled: hasRemoteUrl,
-          child: const Text('Открыть origin в браузере'),
+          child: Text(l10n.menuOpenRemote),
         ),
-        const PopupMenuItem(
-          value: 'shortcut',
-          child: Text('Создать ярлык на Рабочем столе'),
-        ),
-        const PopupMenuItem(value: 'finder', child: Text('Показать в Finder')),
-        const PopupMenuItem(
-            value: 'terminal', child: Text('Открыть в Терминале')),
+        PopupMenuItem(value: 'shortcut', child: Text(l10n.menuShortcut)),
+        PopupMenuItem(value: 'finder', child: Text(l10n.menuFinder)),
+        PopupMenuItem(value: 'terminal', child: Text(l10n.menuTerminal)),
       ],
     );
   }
@@ -1268,6 +1294,7 @@ class _LogPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1275,11 +1302,11 @@ class _LogPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
             children: [
-              Text('Лог', style: Theme.of(context).textTheme.titleSmall),
+              Text(l10n.logTitle, style: Theme.of(context).textTheme.titleSmall),
               const Spacer(),
               TextButton(
                   onPressed: logs.isEmpty ? null : onClear,
-                  child: const Text('Очистить')),
+                  child: Text(l10n.logClear)),
             ],
           ),
         ),

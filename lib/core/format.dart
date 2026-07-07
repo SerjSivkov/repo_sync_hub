@@ -1,11 +1,13 @@
-/// Форматирование размеров, дат и чисел для UI.
+import '../l10n/app_localizations.dart';
+
+/// Форматирование размеров, дат и чисел для UI. Локализуется через [AppLocalizations].
 class Format {
   Format._();
 
-  static String bytes(int? value) {
+  static String bytes(AppLocalizations l10n, int? value) {
     if (value == null) return '—';
-    if (value < 1024) return '$value Б';
-    const units = ['КБ', 'МБ', 'ГБ', 'ТБ'];
+    if (value < 1024) return '$value ${l10n.unitB}';
+    final units = [l10n.unitKB, l10n.unitMB, l10n.unitGB, l10n.unitTB];
     double size = value / 1024;
     var unit = 0;
     while (size >= 1024 && unit < units.length - 1) {
@@ -26,20 +28,19 @@ class Format {
   static String _two(int v) => v.toString().padLeft(2, '0');
 
   /// Относительная дата: «только что», «5 мин назад», «3 дня назад», дата.
-  static String relativeDate(DateTime? date) {
-    if (date == null) return 'никогда';
+  static String relativeDate(AppLocalizations l10n, DateTime? date) {
+    if (date == null) return l10n.fmtNever;
     final now = DateTime.now();
     final diff = now.difference(date);
 
     if (diff.isNegative) return dateTime(date);
-    if (diff.inMinutes < 1) return 'только что';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} мин назад';
-    if (diff.inHours < 24) return '${diff.inHours} ч назад';
-    if (diff.inDays < 7) return '${diff.inDays} дн назад';
-    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} нед назад';
-    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()} мес назад';
-    final years = (diff.inDays / 365).floor();
-    return '$years ${years == 1 ? 'год' : 'г'} назад';
+    if (diff.inMinutes < 1) return l10n.fmtJustNow;
+    if (diff.inMinutes < 60) return l10n.fmtMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.fmtHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return l10n.fmtDaysAgo(diff.inDays);
+    if (diff.inDays < 30) return l10n.fmtWeeksAgo((diff.inDays / 7).floor());
+    if (diff.inDays < 365) return l10n.fmtMonthsAgo((diff.inDays / 30).floor());
+    return l10n.fmtYearsAgo((diff.inDays / 365).floor());
   }
 
   static String date(DateTime? d) {

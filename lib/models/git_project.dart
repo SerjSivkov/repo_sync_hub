@@ -15,6 +15,10 @@ enum GitProjectStatus {
 /// Порог «заброшенности»: репозиторий не обновлялся дольше этого срока.
 const Duration kAbandonedThreshold = Duration(days: 365);
 
+/// Сентинелы спец-названий групп (локализуются в виджете отображения).
+const String kGroupNoGroup = '\u0000no_group';
+const String kGroupRoot = '\u0000root';
+
 /// Краткая информация о git-репозитории.
 class GitProject {
   GitProject({
@@ -119,13 +123,15 @@ class GitProject {
       lastPulledAt ?? lastCommitAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Группа = дочерняя директория на 1 уровень ниже директории сканирования.
+  /// Для спец-случаев возвращает стабильные ключи-сентинелы
+  /// ([kGroupNoGroup]/[kGroupRoot]), которые локализуются в виджете.
   String get groupName {
     final root = scanRoot;
-    if (root == null || root.isEmpty) return '(без группы)';
+    if (root == null || root.isEmpty) return kGroupNoGroup;
     final rel = p.relative(path, from: root);
     final parts =
         p.split(rel).where((e) => e != '.' && e.isNotEmpty).toList();
-    if (parts.length <= 1) return '(в корне)';
+    if (parts.length <= 1) return kGroupRoot;
     return parts.first;
   }
 

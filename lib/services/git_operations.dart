@@ -1,4 +1,5 @@
 import '../core/app_settings.dart';
+import '../core/locale_controller.dart';
 import '../models/git_project.dart';
 import 'git_runner.dart';
 import 'git_scanner.dart';
@@ -34,11 +35,11 @@ class GitOperations {
     if (defaultBranch == null) {
       return project.copyWith(
         status: GitProjectStatus.warning,
-        lastMessage: 'Не найдена ветка main/master',
+        lastMessage: l10n.opNoDefaultBranch,
       );
     }
 
-    log?.call('[${project.name}] pull $defaultBranch');
+    log?.call(l10n.opLogPull(project.name, defaultBranch));
     var working = project.copyWith(status: GitProjectStatus.pulling);
 
     if (settings.fetchBeforePull) {
@@ -87,7 +88,7 @@ class GitOperations {
     }
 
     final received = pull.pulledUpdates;
-    final message = received ? 'получены обновления' : 'уже актуально';
+    final message = received ? l10n.opUpdatesReceived : l10n.opUpToDate;
     final refreshed = await _refreshAfter(
       project,
       settings,
@@ -106,7 +107,7 @@ class GitOperations {
     AppSettings settings, {
     LogSink? log,
   }) async {
-    log?.call('[${project.name}] push → GitLab');
+    log?.call(l10n.opLogPush(project.name));
     var working = project.copyWith(status: GitProjectStatus.pushing);
 
     final remoteName = settings.remoteName;
@@ -125,14 +126,14 @@ class GitOperations {
         log: log,
       );
     } else {
-      log?.call('  remote $remoteName уже указывает на систему-приёмник');
+      log?.call('  ${l10n.opRemoteAlready(remoteName)}');
     }
 
     final branch = project.defaultBranch ?? await _runner.defaultBranch(project.path);
     if (branch == null) {
       return working.copyWith(
         status: GitProjectStatus.warning,
-        lastMessage: 'Нет ветки main/master для push',
+        lastMessage: l10n.opNoBranchPush,
       );
     }
 
@@ -162,7 +163,7 @@ class GitOperations {
       await _runner.run(project.path, ['push', remoteName, '--tags']);
     }
 
-    return _refreshAfter(project, settings, GitProjectStatus.success, 'push ok');
+    return _refreshAfter(project, settings, GitProjectStatus.success, l10n.opPushOk);
   }
 
   Future<GitProject> syncProject(
@@ -170,7 +171,7 @@ class GitOperations {
     AppSettings settings, {
     LogSink? log,
   }) async {
-    log?.call('[${project.name}] sync (pull + push)');
+    log?.call(l10n.opLogSync(project.name));
     final pulled = await pullDefaultBranch(
       project.copyWith(status: GitProjectStatus.syncing),
       settings,

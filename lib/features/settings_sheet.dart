@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../core/app_settings.dart';
+import '../l10n/app_localizations.dart';
 
 class SettingsSheet extends StatefulWidget {
   const SettingsSheet({super.key, required this.initial});
@@ -50,6 +51,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
     _pushTags = s.pushTags;
     _themeMode = s.themeMode;
     _viewMode = s.viewMode;
+    _languageCode = s.languageCode;
     _autoScanOnStartup = s.autoScanOnStartup;
     _scheduleEnabled = s.scheduleEnabled;
   }
@@ -66,9 +68,11 @@ class _SettingsSheetState extends State<SettingsSheet> {
     super.dispose();
   }
 
+  late String _languageCode;
+
   Future<void> _addDirectory() async {
     final path = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Директория с git-проектами',
+      dialogTitle: AppLocalizations.of(context).settingsAddDirTooltip,
     );
     if (path != null && !_roots.contains(path)) {
       setState(() => _roots.add(path));
@@ -95,6 +99,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
       pushTags: _pushTags,
       themeMode: _themeMode,
       viewMode: _viewMode,
+      languageCode: _languageCode,
       autoScanOnStartup: _autoScanOnStartup,
       scanCacheTtlMinutes: _intOr(_cacheTtlCtrl, 60, min: 0),
       scanConcurrency: _intOr(_concurrencyCtrl, 4, min: 1).clamp(1, 16).toInt(),
@@ -106,6 +111,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -118,22 +124,22 @@ class _SettingsSheetState extends State<SettingsSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Настройки', style: theme.textTheme.titleLarge),
+            Text(l10n.settingsTitle, style: theme.textTheme.titleLarge),
             const SizedBox(height: 16),
 
             // --- Директории сканирования (несколько) ---
             Row(
               children: [
                 Expanded(
-                  child: Text('Директории сканирования',
+                  child: Text(l10n.settingsScanDirs,
                       style: theme.textTheme.titleSmall),
                 ),
                 Tooltip(
-                  message: 'Добавить директорию для поиска git-репозиториев',
+                  message: l10n.settingsAddDirTooltip,
                   child: TextButton.icon(
                     onPressed: _addDirectory,
                     icon: const Icon(Icons.add),
-                    label: const Text('Добавить'),
+                    label: Text(l10n.settingsAddDir),
                   ),
                 ),
               ],
@@ -142,7 +148,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'Не выбрано ни одной директории',
+                  l10n.settingsNoDirs,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -156,7 +162,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                   leading: const Icon(Icons.folder_outlined),
                   title: Text(root, maxLines: 1, overflow: TextOverflow.ellipsis),
                   trailing: Tooltip(
-                    message: 'Убрать директорию из списка',
+                    message: l10n.settingsRemoveDir,
                     child: IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => setState(() => _roots.remove(root)),
@@ -168,26 +174,45 @@ class _SettingsSheetState extends State<SettingsSheet> {
             const Divider(height: 24),
 
             // --- Внешний вид ---
-            Text('Внешний вид', style: theme.textTheme.titleSmall),
+            Text(l10n.settingsAppearance, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             _LabeledRow(
-              label: 'Тема',
+              label: l10n.settingsLanguage,
+              child: SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(
+                    value: 'ru',
+                    label: Text(l10n.languageRussian),
+                  ),
+                  ButtonSegment(
+                    value: 'en',
+                    label: Text(l10n.languageEnglish),
+                  ),
+                ],
+                selected: {_languageCode},
+                onSelectionChanged: (s) =>
+                    setState(() => _languageCode = s.first),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _LabeledRow(
+              label: l10n.settingsTheme,
               child: SegmentedButton<ThemeMode>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: ThemeMode.system,
-                    label: Text('Система'),
-                    icon: Icon(Icons.brightness_auto),
+                    label: Text(l10n.settingsThemeSystem),
+                    icon: const Icon(Icons.brightness_auto),
                   ),
                   ButtonSegment(
                     value: ThemeMode.light,
-                    label: Text('Светлая'),
-                    icon: Icon(Icons.light_mode),
+                    label: Text(l10n.settingsThemeLight),
+                    icon: const Icon(Icons.light_mode),
                   ),
                   ButtonSegment(
                     value: ThemeMode.dark,
-                    label: Text('Тёмная'),
-                    icon: Icon(Icons.dark_mode),
+                    label: Text(l10n.settingsThemeDark),
+                    icon: const Icon(Icons.dark_mode),
                   ),
                 ],
                 selected: {_themeMode},
@@ -196,18 +221,18 @@ class _SettingsSheetState extends State<SettingsSheet> {
             ),
             const SizedBox(height: 12),
             _LabeledRow(
-              label: 'Вид списка',
+              label: l10n.settingsViewMode,
               child: SegmentedButton<RepoViewMode>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: RepoViewMode.list,
-                    label: Text('Построчно'),
-                    icon: Icon(Icons.view_list),
+                    label: Text(l10n.settingsViewList),
+                    icon: const Icon(Icons.view_list),
                   ),
                   ButtonSegment(
                     value: RepoViewMode.tree,
-                    label: Text('Дерево'),
-                    icon: Icon(Icons.account_tree),
+                    label: Text(l10n.settingsViewTree),
+                    icon: const Icon(Icons.account_tree),
                   ),
                 ],
                 selected: {_viewMode},
@@ -218,30 +243,29 @@ class _SettingsSheetState extends State<SettingsSheet> {
             const Divider(height: 24),
 
             // --- Система-приёмник (не только GitLab) ---
-            Text('Система-приёмник (push)', style: theme.textTheme.titleSmall),
+            Text(l10n.settingsRemoteSection, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             TextField(
               controller: _hostCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Хост',
-                hintText: 'gitlab.com / gitea.local / git.company.ru',
-                helperText:
-                    'Любая git-система: GitLab, Gitea, Bitbucket, самописный сервер',
+              decoration: InputDecoration(
+                labelText: l10n.settingsHost,
+                hintText: l10n.settingsHostHint,
+                helperText: l10n.settingsHostHelper,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _groupCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Группа / namespace',
+              decoration: InputDecoration(
+                labelText: l10n.settingsGroup,
                 hintText: 'mobile',
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _remoteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Имя remote для push',
+              decoration: InputDecoration(
+                labelText: l10n.settingsRemoteName,
                 hintText: 'origin',
               ),
             ),
@@ -249,64 +273,62 @@ class _SettingsSheetState extends State<SettingsSheet> {
             TextField(
               controller: _tokenCtrl,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Токен (опционально)',
-                helperText: 'Для URL remote при push; хранится локально',
+              decoration: InputDecoration(
+                labelText: l10n.settingsToken,
+                helperText: l10n.settingsTokenHelper,
               ),
             ),
 
             const Divider(height: 24),
 
             // --- Сканирование ---
-            Text('Сканирование', style: theme.textTheme.titleSmall),
+            Text(l10n.settingsScanSection, style: theme.textTheme.titleSmall),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Рекурсивное сканирование'),
-              subtitle: const Text('Искать .git во вложенных папках'),
+              title: Text(l10n.settingsRecursive),
+              subtitle: Text(l10n.settingsRecursiveSub),
               value: _recursive,
               onChanged: (v) => setState(() => _recursive = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Сканировать при запуске'),
-              subtitle: const Text('Иначе — показ из кэша прошлого скана'),
+              title: Text(l10n.settingsAutoScan),
+              subtitle: Text(l10n.settingsAutoScanSub),
               value: _autoScanOnStartup,
               onChanged: (v) => setState(() => _autoScanOnStartup = v),
             ),
             TextField(
               controller: _cacheTtlCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Кэш скана, мин',
-                helperText:
-                    'Свежие (в пределах этого срока) репозитории не пересканируются. 0 — всегда сканировать',
+              decoration: InputDecoration(
+                labelText: l10n.settingsCacheTtl,
+                helperText: l10n.settingsCacheTtlHelper,
               ),
             ),
             TextField(
               controller: _concurrencyCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Параллелизм скана',
-                helperText:
-                    'Сколько репозиториев сканировать одновременно (1–16)',
+              decoration: InputDecoration(
+                labelText: l10n.settingsConcurrency,
+                helperText: l10n.settingsConcurrencyHelper,
               ),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('fetch перед pull'),
+              title: Text(l10n.settingsFetch),
               value: _fetchBeforePull,
               onChanged: (v) => setState(() => _fetchBeforePull = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('stash перед checkout'),
-              subtitle: const Text('Если есть незакоммиченные изменения'),
+              title: Text(l10n.settingsStash),
+              subtitle: Text(l10n.settingsStashSub),
               value: _autoStash,
               onChanged: (v) => setState(() => _autoStash = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Push тегов'),
+              title: Text(l10n.settingsPushTags),
               value: _pushTags,
               onChanged: (v) => setState(() => _pushTags = v),
             ),
@@ -314,12 +336,12 @@ class _SettingsSheetState extends State<SettingsSheet> {
             const Divider(height: 24),
 
             // --- Расписание ---
-            Text('Сканирование по расписанию',
+            Text(l10n.settingsScheduleSection,
                 style: theme.textTheme.titleSmall),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Запускать автоматически'),
-              subtitle: const Text('Периодический повтор сканирования'),
+              title: Text(l10n.settingsScheduleEnabled),
+              subtitle: Text(l10n.settingsScheduleEnabledSub),
               value: _scheduleEnabled,
               onChanged: (v) => setState(() => _scheduleEnabled = v),
             ),
@@ -327,16 +349,16 @@ class _SettingsSheetState extends State<SettingsSheet> {
               controller: _intervalCtrl,
               enabled: _scheduleEnabled,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Интервал, мин',
-                helperText: 'Как часто повторять сканирование',
+              decoration: InputDecoration(
+                labelText: l10n.settingsInterval,
+                helperText: l10n.settingsIntervalHelper,
               ),
             ),
 
             const SizedBox(height: 20),
             FilledButton(
               onPressed: () => Navigator.pop(context, _buildSettings()),
-              child: const Text('Сохранить'),
+              child: Text(l10n.actionSave),
             ),
           ],
         ),

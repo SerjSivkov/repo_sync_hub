@@ -30,6 +30,24 @@ void main() {
       final loaded = await AppSettings.load();
       expect(loaded.scanConcurrency, 8);
     });
+
+    test('languageCode defaults to ru', () {
+      expect(AppSettings().languageCode, 'ru');
+    });
+
+    test('languageCode round-trips through SharedPreferences', () async {
+      SharedPreferences.setMockInitialValues({});
+      final original = AppSettings(languageCode: 'en');
+      await original.save();
+      final loaded = await AppSettings.load();
+      expect(loaded.languageCode, 'en');
+    });
+
+    test('languageCode falls back to ru for unknown values', () async {
+      SharedPreferences.setMockInitialValues({'language_code': 'fr'});
+      final loaded = await AppSettings.load();
+      expect(loaded.languageCode, 'ru');
+    });
   });
 
   group('GitOperations.buildRemoteUrl', () {

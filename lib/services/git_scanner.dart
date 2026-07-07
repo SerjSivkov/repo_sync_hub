@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../core/app_settings.dart';
 import '../core/concurrency.dart';
+import '../core/locale_controller.dart';
 import '../models/git_project.dart';
 import '../models/scan_progress.dart';
 import 'git_runner.dart';
@@ -144,7 +145,7 @@ class GitScanner {
           scanRoot: ref.root,
           scanError: '$e',
           status: GitProjectStatus.error,
-          lastMessage: 'Ошибка сканирования',
+          lastMessage: l10n.scanErrorShort,
         );
       } finally {
         inflight.remove(i);
@@ -321,7 +322,7 @@ class GitScanner {
         lastScannedAt: DateTime.now(),
         scanError: '$e',
         status: GitProjectStatus.error,
-        lastMessage: 'Ошибка: $e',
+        lastMessage: l10n.scanErrorPrefix('$e'),
       );
     }
   }
@@ -345,15 +346,16 @@ class GitScanner {
     (int, int) aheadBehind,
     int remoteBehind,
   ) {
+    final t = l10n;
     final parts = <String>[];
-    if (branch != null) parts.add('ветка $branch');
+    if (branch != null) parts.add(t.statusBranch(branch));
     if (defaultBranch != null && branch != defaultBranch) {
-      parts.add('default $defaultBranch');
+      parts.add(t.statusDefault(defaultBranch));
     }
-    if (dirty) parts.add('есть изменения');
-    if (remoteBehind > 0) parts.add('обновлений: $remoteBehind');
-    if (aheadBehind.$1 > 0) parts.add('+${aheadBehind.$1}');
-    if (aheadBehind.$2 > 0) parts.add('-${aheadBehind.$2}');
-    return parts.isEmpty ? 'ok' : parts.join(', ');
+    if (dirty) parts.add(t.statusDirty);
+    if (remoteBehind > 0) parts.add(t.statusUpdates(remoteBehind));
+    if (aheadBehind.$1 > 0) parts.add(t.statusAhead(aheadBehind.$1));
+    if (aheadBehind.$2 > 0) parts.add(t.statusBehind(aheadBehind.$2));
+    return parts.isEmpty ? t.statusOk : parts.join(', ');
   }
 }

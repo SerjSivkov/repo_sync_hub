@@ -1,3 +1,4 @@
+import '../l10n/app_localizations.dart';
 import 'git_project.dart';
 
 /// Группа репозиториев по дочерней директории сканирования.
@@ -18,8 +19,16 @@ class RepoGroup {
   int get abandonedCount => projects.where((p) => p.isAbandoned).length;
 }
 
-/// Ключ группы: разные корни с одинаковым именем дочерней папки не сливаются.
-const String kErrorGroupName = '⚠ Ошибки';
+/// Псевдо-группа «Ошибки» — сентинел, локализуется в виджете.
+const String kErrorGroupName = '\u0000errors';
+
+/// Локализует имя группы: сентинелы → перевод, обычные имена — как есть.
+String localizedGroupName(AppLocalizations l10n, String name) => switch (name) {
+      kErrorGroupName => l10n.groupErrors,
+      kGroupNoGroup => l10n.groupNoGroup,
+      kGroupRoot => l10n.groupRoot,
+      _ => name,
+    };
 
 /// Разбивает проекты на группы согласно требованиям:
 /// 1. Репозитории с ошибками — отдельная группа сверху.

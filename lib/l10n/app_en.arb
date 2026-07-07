@@ -10,6 +10,10 @@
   "actionSync": "Sync",
   "actionSave": "Save",
   "actionDirectories": "Directories",
+  "actionAddRepo": "Add repository",
+  "actionClone": "Clone",
+  "actionCancel": "Cancel",
+  "actionDelete": "Delete",
 
   "tooltipScanStart": "Scan directories and refresh repository statuses",
   "tooltipScanStop": "Cancel the current scan",
@@ -17,6 +21,7 @@
   "tooltipPush": "Push selected repositories to the remote",
   "tooltipSync": "Sync: pull, then push for selected",
   "tooltipDirectories": "Open settings and choose scan directories",
+  "tooltipAddRepo": "Clone a repository into a scan directory",
   "tooltipSettings": "Settings: directories, remote, theme, schedule",
   "tooltipThemeCycle": "Theme: {theme} (tap to switch)",
   "@tooltipThemeCycle": {
@@ -48,6 +53,7 @@
   "menuShortcut": "Create desktop shortcut",
   "menuFinder": "Reveal in Finder",
   "menuTerminal": "Open in Terminal",
+  "menuDelete": "Delete from disk…",
 
   "tooltipOpenRemote": "Open origin in browser: {url}",
   "@tooltipOpenRemote": {
@@ -276,6 +282,73 @@
     }
   },
 
+  "deleteDialogTitle": "Delete repository?",
+  "deleteDialogBody": "The «{name}» repository folder will be moved to the Trash. You can restore it from the Trash later.",
+  "@deleteDialogBody": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "deleteDialogDirtyWarning": "Warning: the repository has uncommitted changes — they will be moved to the Trash too.",
+  "deleteDialogPath": "Path: {path}",
+  "@deleteDialogPath": {
+    "placeholders": { "path": { "type": "String" } }
+  },
+
+  "cloneDialogTitle": "Clone repository",
+  "cloneDialogUrlLabel": "Repository URL",
+  "cloneDialogUrlHint": "https://host/group/repo.git or git@host:group/repo.git",
+  "cloneDialogTargetLabel": "Target directory",
+  "cloneDialogNoRoots": "Add a scan directory in settings first",
+
+  "logDeleting": "[{name}] moving to Trash: {path}",
+  "@logDeleting": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "logDeleted": "[{name}] moved to Trash",
+  "@logDeleted": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "logDeleteFailed": "[{name}] failed to delete: {error}",
+  "@logDeleteFailed": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "logCloneStart": "Cloning {url} into {dir}…",
+  "@logCloneStart": {
+    "placeholders": {
+      "url": { "type": "String" },
+      "dir": { "type": "String" }
+    }
+  },
+  "logCloneDone": "Cloned: {name}",
+  "@logCloneDone": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "logCloneFailed": "Clone failed: {error}",
+  "@logCloneFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "snackDeleted": "Repository moved to the Trash",
+  "snackDeleteFailed": "Failed to delete: {error}",
+  "@snackDeleteFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "snackCloneDone": "Repository cloned",
+  "snackCloneFailed": "Clone failed: {error}",
+  "@snackCloneFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "snackCloneInvalidUrl": "Could not determine repository name from the URL",
+  "snackCloneExists": "A «{name}» folder already exists in the target directory",
+  "@snackCloneExists": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+
   "snackShortcutCreated": "Shortcut created on the Desktop",
   "snackShortcutFailed": "Failed to create shortcut: {error}",
   "@snackShortcutFailed": {
@@ -430,6 +503,14 @@
   },
   "errOpenTerminalFailed": "open -a Terminal failed with an error: {error}",
   "@errOpenTerminalFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "errRepoNotFound": "Repository folder not found: {path}",
+  "@errRepoNotFound": {
+    "placeholders": { "path": { "type": "String" } }
+  },
+  "errTrashFailed": "Could not move to Trash: {error}",
+  "@errTrashFailed": {
     "placeholders": { "error": { "type": "String" } }
   },
   "exceptionScanCancelled": "Scan stopped"

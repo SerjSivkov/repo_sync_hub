@@ -51,6 +51,24 @@ class RepoShortcut {
     }
   }
 
+  /// Перемещает директорию репозитория в Корзину (обратимо).
+  /// Использует Finder через AppleScript, чтобы удаление было в системную
+  /// Корзину, а не безвозвратным.
+  static Future<void> moveToTrash(String repoPath) async {
+    final dir = Directory(repoPath);
+    if (!await dir.exists()) {
+      throw StateError(l10n.errRepoNotFound(repoPath));
+    }
+    // Экранируем двойные кавычки и обратные слэши для строки AppleScript.
+    final escaped = repoPath.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+    final script =
+        'tell application "Finder" to move POSIX file "$escaped" to trash';
+    final result = await Process.run('osascript', ['-e', script]);
+    if (result.exitCode != 0) {
+      throw StateError(l10n.errTrashFailed('${result.stderr}'.trim()));
+    }
+  }
+
   /// Открывает ссылку в браузере по умолчанию.
   static Future<void> openUrl(String url) async {
     final result = await Process.run('open', [url]);

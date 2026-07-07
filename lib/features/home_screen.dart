@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as pathlib;
 
 import '../core/app_settings.dart';
 import '../core/format.dart';
@@ -380,6 +382,128 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _deleteProject(GitProject p) async {
+    final l = l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.deleteDialogTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.deleteDialogBody(p.name)),
+            const SizedBox(height: 12),
+            Text(
+              l.deleteDialogPath(p.path),
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            if (p.isDirty) ...[
+              const SizedBox(height: 12),
+              Text(
+                l.deleteDialogDirtyWarning,
+                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.error,
+                    ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.actionDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    _log(l10n.logDeleting(p.name, p.path));
+    try {
+      await RepoShortcut.moveToTrash(p.path);
+      if (!mounted) return;
+      setState(() => _projects.removeWhere((x) => x.path == p.path));
+      await _persistCache();
+      _log(l10n.logDeleted(p.name));
+      _toast(l10n.snackDeleted);
+    } catch (e) {
+      _log(l10n.logDeleteFailed(p.name, '$e'));
+      _toast(l10n.snackDeleteFailed('$e'));
+    }
+  }
+
+  Future<void> _addRepository() async {
+    if (!_settings.hasRoots) {
+      _toast(l10n.cloneDialogNoRoots);
+      _log(l10n.logNoRoots);
+      return;
+    }
+    final result = await showDialog<_CloneRequest>(
+      context: context,
+      builder: (ctx) => _CloneDialog(roots: _settings.projectsRoots),
+    );
+    if (result == null) return;
+    await _clone(result.url, result.targetDir);
+  }
+
+  Future<void> _clone(String url, String targetDir) async {
+    final name = gitRepoNameFromUrl(url);
+    if (name == null) {
+      _toast(l10n.snackCloneInvalidUrl);
+      return;
+    }
+    final destPath = pathlib.join(targetDir, name);
+    if (await FileSystemEntity.type(destPath) !=
+        FileSystemEntityType.notFound) {
+      _toast(l10n.snackCloneExists(name));
+      return;
+    }
+
+    setState(() => _busy = true);
+    _log(l10n.logCloneStart(url, targetDir));
+    try {
+      final res = await _runner.clone(
+        destDir: targetDir,
+        url: url,
+        directoryName: name,
+        log: _log,
+      );
+      if (!res.ok) {
+        _log(l10n.logCloneFailed(res.combined));
+        _toast(l10n.snackCloneFailed(res.combined));
+        return;
+      }
+      final project = await _scanner.inspectRepo(
+        destPath,
+        _settings,
+        scanRoot: targetDir,
+      );
+      if (!mounted) return;
+      if (project != null) {
+        setState(() {
+          _projects.removeWhere((x) => x.path == project.path);
+          _projects.add(project);
+          _projects.sort((a, b) => a.path.compareTo(b.path));
+        });
+        await _persistCache();
+      }
+      _log(l10n.logCloneDone(name));
+      _toast(l10n.snackCloneDone);
+    } catch (e) {
+      _log(l10n.logCloneFailed('$e'));
+      _toast(l10n.snackCloneFailed('$e'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _openRemote(GitProject p) async {
     final url = p.remoteWebUrl;
     if (url == null) {
@@ -473,6 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             onStopScan: _stopScan,
             onSettings: _openSettings,
+            onAddRepo: _addRepository,
           ),
           Expanded(
             flex: 3,
@@ -501,6 +626,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onReveal: _revealInFinder,
                     onTerminal: _openInTerminal,
                     onOpenRemote: _openRemote,
+                    onDelete: _deleteProject,
                   ),
           ),
           const Divider(height: 1),
@@ -540,6 +666,7 @@ class _Toolbar extends StatelessWidget {
     required this.onSync,
     required this.onStopScan,
     required this.onSettings,
+    required this.onAddRepo,
   });
 
   final AppSettings settings;
@@ -555,6 +682,7 @@ class _Toolbar extends StatelessWidget {
   final VoidCallback onSync;
   final VoidCallback onStopScan;
   final VoidCallback onSettings;
+  final VoidCallback onAddRepo;
 
   @override
   Widget build(BuildContext context) {
@@ -583,6 +711,12 @@ class _Toolbar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium,
                   ),
+                ),
+                IconButton(
+                  tooltip: l10n.tooltipAddRepo,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: busy || !settings.hasRoots ? null : onAddRepo,
+                  icon: const Icon(Icons.add_circle_outline, size: 20),
                 ),
                 if (lastScanAt != null)
                   Padding(
@@ -725,6 +859,7 @@ class _ProjectListArea extends StatefulWidget {
     required this.onReveal,
     required this.onTerminal,
     required this.onOpenRemote,
+    required this.onDelete,
   });
 
   final List<RepoGroup> groups;
@@ -741,6 +876,7 @@ class _ProjectListArea extends StatefulWidget {
   final void Function(GitProject project) onReveal;
   final void Function(GitProject project) onTerminal;
   final void Function(GitProject project) onOpenRemote;
+  final void Function(GitProject project) onDelete;
 
   @override
   State<_ProjectListArea> createState() => _ProjectListAreaState();
@@ -773,6 +909,7 @@ class _ProjectListAreaState extends State<_ProjectListArea> {
           onReveal: () => widget.onReveal(p),
           onTerminal: () => widget.onTerminal(p),
           onOpenRemote: () => widget.onOpenRemote(p),
+          onDelete: () => widget.onDelete(p),
         );
 
     return Column(
@@ -957,6 +1094,7 @@ class _ProjectTile extends StatelessWidget {
     required this.onReveal,
     required this.onTerminal,
     required this.onOpenRemote,
+    required this.onDelete,
   });
 
   final GitProject project;
@@ -969,6 +1107,7 @@ class _ProjectTile extends StatelessWidget {
   final VoidCallback onReveal;
   final VoidCallback onTerminal;
   final VoidCallback onOpenRemote;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1092,6 +1231,7 @@ class _ProjectTile extends StatelessWidget {
             onReveal: onReveal,
             onTerminal: onTerminal,
             onOpenRemote: onOpenRemote,
+            onDelete: onDelete,
           ),
         ],
       ),
@@ -1149,6 +1289,7 @@ class _ProjectMenu extends StatelessWidget {
     required this.onReveal,
     required this.onTerminal,
     required this.onOpenRemote,
+    required this.onDelete,
   });
 
   final bool busy;
@@ -1160,10 +1301,12 @@ class _ProjectMenu extends StatelessWidget {
   final VoidCallback onReveal;
   final VoidCallback onTerminal;
   final VoidCallback onOpenRemote;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return PopupMenuButton<String>(
       enabled: !busy,
       tooltip: l10n.menuActions,
@@ -1183,6 +1326,8 @@ class _ProjectMenu extends StatelessWidget {
             onTerminal();
           case 'remote':
             onOpenRemote();
+          case 'delete':
+            onDelete();
         }
       },
       itemBuilder: (context) => [
@@ -1198,6 +1343,14 @@ class _ProjectMenu extends StatelessWidget {
         PopupMenuItem(value: 'shortcut', child: Text(l10n.menuShortcut)),
         PopupMenuItem(value: 'finder', child: Text(l10n.menuFinder)),
         PopupMenuItem(value: 'terminal', child: Text(l10n.menuTerminal)),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'delete',
+          child: Text(
+            l10n.menuDelete,
+            style: TextStyle(color: theme.colorScheme.error),
+          ),
+        ),
       ],
     );
   }
@@ -1319,6 +1472,90 @@ class _LogPanel extends StatelessWidget {
               style: const TextStyle(fontFamily: 'Menlo', fontSize: 12),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Результат диалога клонирования: URL и выбранная директория назначения.
+class _CloneRequest {
+  const _CloneRequest(this.url, this.targetDir);
+  final String url;
+  final String targetDir;
+}
+
+class _CloneDialog extends StatefulWidget {
+  const _CloneDialog({required this.roots});
+
+  final List<String> roots;
+
+  @override
+  State<_CloneDialog> createState() => _CloneDialogState();
+}
+
+class _CloneDialogState extends State<_CloneDialog> {
+  final _urlCtrl = TextEditingController();
+  late String _target = widget.roots.first;
+
+  @override
+  void dispose() {
+    _urlCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final url = _urlCtrl.text.trim();
+    if (url.isEmpty) return;
+    Navigator.pop(context, _CloneRequest(url, _target));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.cloneDialogTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _urlCtrl,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: l10n.cloneDialogUrlLabel,
+              hintText: l10n.cloneDialogUrlHint,
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          if (widget.roots.length > 1) ...[
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _target,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: l10n.cloneDialogTargetLabel,
+              ),
+              items: [
+                for (final r in widget.roots)
+                  DropdownMenuItem(
+                    value: r,
+                    child: Text(r, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _target = v ?? _target),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(l10n.actionClone),
         ),
       ],
     );

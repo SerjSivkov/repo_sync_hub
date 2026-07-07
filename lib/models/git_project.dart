@@ -290,6 +290,30 @@ String? gitRemoteToWebUrl(String? remote) {
   return null;
 }
 
+/// Выводит имя директории репозитория из git-URL (как это делает `git clone`).
+///
+/// Примеры:
+/// - `https://host/group/repo.git`   → `repo`
+/// - `git@host:group/repo.git`       → `repo`
+/// - `ssh://git@host/path/repo`      → `repo`
+///
+/// Возвращает `null`, если имя нельзя определить.
+String? gitRepoNameFromUrl(String? url) {
+  var raw = url?.trim();
+  if (raw == null || raw.isEmpty) return null;
+
+  // Отбрасываем завершающий слэш.
+  raw = raw.replaceAll(RegExp(r'/+$'), '');
+
+  // Последний сегмент после '/' или ':' (для scp-подобных URL).
+  final match = RegExp(r'[/:]([^/:]+)$').firstMatch(raw);
+  var name = match != null ? match.group(1)! : raw;
+
+  if (name.endsWith('.git')) name = name.substring(0, name.length - 4);
+  name = name.trim();
+  return name.isEmpty ? null : name;
+}
+
 /// Результат git-команды.
 class GitCommandResult {
   const GitCommandResult({

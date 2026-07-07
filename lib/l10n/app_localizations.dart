@@ -152,6 +152,30 @@ abstract class AppLocalizations {
   /// **'Directories'**
   String get actionDirectories;
 
+  /// No description provided for @actionAddRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add repository'**
+  String get actionAddRepo;
+
+  /// No description provided for @actionClone.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone'**
+  String get actionClone;
+
+  /// No description provided for @actionCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get actionCancel;
+
+  /// No description provided for @actionDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get actionDelete;
+
   /// No description provided for @tooltipScanStart.
   ///
   /// In en, this message translates to:
@@ -187,6 +211,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open settings and choose scan directories'**
   String get tooltipDirectories;
+
+  /// No description provided for @tooltipAddRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone a repository into a scan directory'**
+  String get tooltipAddRepo;
 
   /// No description provided for @tooltipSettings.
   ///
@@ -313,6 +343,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open in Terminal'**
   String get menuTerminal;
+
+  /// No description provided for @menuDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete from disk…'**
+  String get menuDelete;
 
   /// No description provided for @tooltipOpenRemote.
   ///
@@ -685,6 +721,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'[{name}] failed to open the link: {error}'**
   String logOpenRemoteFailed(String name, String error);
+
+  /// No description provided for @deleteDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete repository?'**
+  String get deleteDialogTitle;
+
+  /// No description provided for @deleteDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The «{name}» repository folder will be moved to the Trash. You can restore it from the Trash later.'**
+  String deleteDialogBody(String name);
+
+  /// No description provided for @deleteDialogDirtyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: the repository has uncommitted changes — they will be moved to the Trash too.'**
+  String get deleteDialogDirtyWarning;
+
+  /// No description provided for @deleteDialogPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Path: {path}'**
+  String deleteDialogPath(String path);
+
+  /// No description provided for @cloneDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone repository'**
+  String get cloneDialogTitle;
+
+  /// No description provided for @cloneDialogUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository URL'**
+  String get cloneDialogUrlLabel;
+
+  /// No description provided for @cloneDialogUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://host/group/repo.git or git@host:group/repo.git'**
+  String get cloneDialogUrlHint;
+
+  /// No description provided for @cloneDialogTargetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target directory'**
+  String get cloneDialogTargetLabel;
+
+  /// No description provided for @cloneDialogNoRoots.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a scan directory in settings first'**
+  String get cloneDialogNoRoots;
+
+  /// No description provided for @logDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'[{name}] moving to Trash: {path}'**
+  String logDeleting(String name, String path);
+
+  /// No description provided for @logDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'[{name}] moved to Trash'**
+  String logDeleted(String name);
+
+  /// No description provided for @logDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'[{name}] failed to delete: {error}'**
+  String logDeleteFailed(String name, String error);
+
+  /// No description provided for @logCloneStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloning {url} into {dir}…'**
+  String logCloneStart(String url, String dir);
+
+  /// No description provided for @logCloneDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned: {name}'**
+  String logCloneDone(String name);
+
+  /// No description provided for @logCloneFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone failed: {error}'**
+  String logCloneFailed(String error);
+
+  /// No description provided for @snackDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository moved to the Trash'**
+  String get snackDeleted;
+
+  /// No description provided for @snackDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete: {error}'**
+  String snackDeleteFailed(String error);
+
+  /// No description provided for @snackCloneDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository cloned'**
+  String get snackCloneDone;
+
+  /// No description provided for @snackCloneFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone failed: {error}'**
+  String snackCloneFailed(String error);
+
+  /// No description provided for @snackCloneInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not determine repository name from the URL'**
+  String get snackCloneInvalidUrl;
+
+  /// No description provided for @snackCloneExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A «{name}» folder already exists in the target directory'**
+  String snackCloneExists(String name);
 
   /// No description provided for @snackShortcutCreated.
   ///
@@ -1189,6 +1351,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'open -a Terminal failed with an error: {error}'**
   String errOpenTerminalFailed(String error);
+
+  /// No description provided for @errRepoNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository folder not found: {path}'**
+  String errRepoNotFound(String path);
+
+  /// No description provided for @errTrashFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not move to Trash: {error}'**
+  String errTrashFailed(String error);
 
   /// No description provided for @exceptionScanCancelled.
   ///

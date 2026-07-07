@@ -36,6 +36,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get actionDirectories => 'Директории';
 
   @override
+  String get actionAddRepo => 'Добавить репозиторий';
+
+  @override
+  String get actionClone => 'Клонировать';
+
+  @override
+  String get actionCancel => 'Отмена';
+
+  @override
+  String get actionDelete => 'Удалить';
+
+  @override
   String get tooltipScanStart =>
       'Просканировать директории и обновить статусы репозиториев';
 
@@ -56,6 +68,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get tooltipDirectories =>
       'Открыть настройки и выбрать директории сканирования';
+
+  @override
+  String get tooltipAddRepo =>
+      'Клонировать репозиторий в директорию сканирования';
 
   @override
   String get tooltipSettings =>
@@ -125,6 +141,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get menuTerminal => 'Открыть в Терминале';
+
+  @override
+  String get menuDelete => 'Удалить с диска…';
 
   @override
   String tooltipOpenRemote(String url) {
@@ -373,6 +392,95 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String logOpenRemoteFailed(String name, String error) {
     return '[$name] не удалось открыть ссылку: $error';
+  }
+
+  @override
+  String get deleteDialogTitle => 'Удалить репозиторий?';
+
+  @override
+  String deleteDialogBody(String name) {
+    return 'Папка репозитория «$name» будет перемещена в Корзину. Позже её можно восстановить из Корзины.';
+  }
+
+  @override
+  String get deleteDialogDirtyWarning =>
+      'Внимание: в репозитории есть незакоммиченные изменения — они тоже уйдут в Корзину.';
+
+  @override
+  String deleteDialogPath(String path) {
+    return 'Путь: $path';
+  }
+
+  @override
+  String get cloneDialogTitle => 'Клонировать репозиторий';
+
+  @override
+  String get cloneDialogUrlLabel => 'URL репозитория';
+
+  @override
+  String get cloneDialogUrlHint =>
+      'https://host/group/repo.git или git@host:group/repo.git';
+
+  @override
+  String get cloneDialogTargetLabel => 'Директория назначения';
+
+  @override
+  String get cloneDialogNoRoots =>
+      'Сначала добавьте директорию сканирования в настройках';
+
+  @override
+  String logDeleting(String name, String path) {
+    return '[$name] перемещение в Корзину: $path';
+  }
+
+  @override
+  String logDeleted(String name) {
+    return '[$name] перемещён в Корзину';
+  }
+
+  @override
+  String logDeleteFailed(String name, String error) {
+    return '[$name] не удалось удалить: $error';
+  }
+
+  @override
+  String logCloneStart(String url, String dir) {
+    return 'Клонирование $url в $dir…';
+  }
+
+  @override
+  String logCloneDone(String name) {
+    return 'Клонирован: $name';
+  }
+
+  @override
+  String logCloneFailed(String error) {
+    return 'Ошибка клонирования: $error';
+  }
+
+  @override
+  String get snackDeleted => 'Репозиторий перемещён в Корзину';
+
+  @override
+  String snackDeleteFailed(String error) {
+    return 'Не удалось удалить: $error';
+  }
+
+  @override
+  String get snackCloneDone => 'Репозиторий клонирован';
+
+  @override
+  String snackCloneFailed(String error) {
+    return 'Ошибка клонирования: $error';
+  }
+
+  @override
+  String get snackCloneInvalidUrl =>
+      'Не удалось определить имя репозитория по URL';
+
+  @override
+  String snackCloneExists(String name) {
+    return 'Папка «$name» уже существует в директории назначения';
   }
 
   @override
@@ -720,6 +828,16 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String errOpenTerminalFailed(String error) {
     return 'open -a Terminal завершился с ошибкой: $error';
+  }
+
+  @override
+  String errRepoNotFound(String path) {
+    return 'Папка репозитория не найдена: $path';
+  }
+
+  @override
+  String errTrashFailed(String error) {
+    return 'Не удалось переместить в Корзину: $error';
   }
 
   @override

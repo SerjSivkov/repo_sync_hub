@@ -36,6 +36,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionDirectories => 'Directories';
 
   @override
+  String get actionAddRepo => 'Add repository';
+
+  @override
+  String get actionClone => 'Clone';
+
+  @override
+  String get actionCancel => 'Cancel';
+
+  @override
+  String get actionDelete => 'Delete';
+
+  @override
   String get tooltipScanStart =>
       'Scan directories and refresh repository statuses';
 
@@ -54,6 +66,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tooltipDirectories => 'Open settings and choose scan directories';
+
+  @override
+  String get tooltipAddRepo => 'Clone a repository into a scan directory';
 
   @override
   String get tooltipSettings =>
@@ -123,6 +138,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuTerminal => 'Open in Terminal';
+
+  @override
+  String get menuDelete => 'Delete from disk…';
 
   @override
   String tooltipOpenRemote(String url) {
@@ -371,6 +389,94 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String logOpenRemoteFailed(String name, String error) {
     return '[$name] failed to open the link: $error';
+  }
+
+  @override
+  String get deleteDialogTitle => 'Delete repository?';
+
+  @override
+  String deleteDialogBody(String name) {
+    return 'The «$name» repository folder will be moved to the Trash. You can restore it from the Trash later.';
+  }
+
+  @override
+  String get deleteDialogDirtyWarning =>
+      'Warning: the repository has uncommitted changes — they will be moved to the Trash too.';
+
+  @override
+  String deleteDialogPath(String path) {
+    return 'Path: $path';
+  }
+
+  @override
+  String get cloneDialogTitle => 'Clone repository';
+
+  @override
+  String get cloneDialogUrlLabel => 'Repository URL';
+
+  @override
+  String get cloneDialogUrlHint =>
+      'https://host/group/repo.git or git@host:group/repo.git';
+
+  @override
+  String get cloneDialogTargetLabel => 'Target directory';
+
+  @override
+  String get cloneDialogNoRoots => 'Add a scan directory in settings first';
+
+  @override
+  String logDeleting(String name, String path) {
+    return '[$name] moving to Trash: $path';
+  }
+
+  @override
+  String logDeleted(String name) {
+    return '[$name] moved to Trash';
+  }
+
+  @override
+  String logDeleteFailed(String name, String error) {
+    return '[$name] failed to delete: $error';
+  }
+
+  @override
+  String logCloneStart(String url, String dir) {
+    return 'Cloning $url into $dir…';
+  }
+
+  @override
+  String logCloneDone(String name) {
+    return 'Cloned: $name';
+  }
+
+  @override
+  String logCloneFailed(String error) {
+    return 'Clone failed: $error';
+  }
+
+  @override
+  String get snackDeleted => 'Repository moved to the Trash';
+
+  @override
+  String snackDeleteFailed(String error) {
+    return 'Failed to delete: $error';
+  }
+
+  @override
+  String get snackCloneDone => 'Repository cloned';
+
+  @override
+  String snackCloneFailed(String error) {
+    return 'Clone failed: $error';
+  }
+
+  @override
+  String get snackCloneInvalidUrl =>
+      'Could not determine repository name from the URL';
+
+  @override
+  String snackCloneExists(String name) {
+    return 'A «$name» folder already exists in the target directory';
   }
 
   @override
@@ -707,6 +813,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String errOpenTerminalFailed(String error) {
     return 'open -a Terminal failed with an error: $error';
+  }
+
+  @override
+  String errRepoNotFound(String path) {
+    return 'Repository folder not found: $path';
+  }
+
+  @override
+  String errTrashFailed(String error) {
+    return 'Could not move to Trash: $error';
   }
 
   @override

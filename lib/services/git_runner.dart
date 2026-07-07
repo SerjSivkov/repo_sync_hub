@@ -171,6 +171,32 @@ class GitRunner {
     return int.tryParse(behind.stdout.trim()) ?? 0;
   }
 
+  /// Клонирует репозиторий [url] в директорию [destDir].
+  /// Если задан [directoryName], клонирует в подпапку с этим именем.
+  /// Возвращает результат git-команды (клонирование может быть долгим).
+  Future<GitCommandResult> clone({
+    required String destDir,
+    required String url,
+    String? directoryName,
+    LogSink? log,
+    Duration timeout = const Duration(minutes: 30),
+  }) async {
+    final args = ['clone', url, ?directoryName];
+    log?.call('  git clone $url');
+    final result = await Process.run(
+      'git',
+      args,
+      workingDirectory: destDir,
+      runInShell: false,
+    ).timeout(timeout);
+
+    return GitCommandResult(
+      exitCode: result.exitCode,
+      stdout: '${result.stdout}',
+      stderr: '${result.stderr}',
+    );
+  }
+
   Future<void> ensureRemote({
     required String repoPath,
     required String remoteName,

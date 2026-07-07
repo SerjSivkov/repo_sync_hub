@@ -183,6 +183,39 @@ void main() {
     });
   });
 
+  group('gitRepoNameFromUrl', () {
+    test('extracts name from https url with .git suffix', () {
+      expect(gitRepoNameFromUrl('https://github.com/mobile/app.git'), 'app');
+    });
+
+    test('extracts name from https url without suffix', () {
+      expect(gitRepoNameFromUrl('https://github.com/mobile/app'), 'app');
+    });
+
+    test('extracts name from scp-like ssh url', () {
+      expect(gitRepoNameFromUrl('git@github.com:mobile/app.git'), 'app');
+    });
+
+    test('extracts name from ssh:// url', () {
+      expect(gitRepoNameFromUrl('ssh://git@gitlab.com:22/mobile/app.git'),
+          'app');
+    });
+
+    test('ignores trailing slash', () {
+      expect(gitRepoNameFromUrl('https://github.com/mobile/app/'), 'app');
+    });
+
+    test('handles dots in the repository name', () {
+      expect(gitRepoNameFromUrl('https://github.com/mobile/my.app.git'),
+          'my.app');
+    });
+
+    test('returns null for null/empty', () {
+      expect(gitRepoNameFromUrl(null), isNull);
+      expect(gitRepoNameFromUrl('   '), isNull);
+    });
+  });
+
   group('ScanProgress', () {
     test('fraction reflects completed over total', () {
       const progress = ScanProgress(total: 10, completed: 4, successCount: 3, errorCount: 1);

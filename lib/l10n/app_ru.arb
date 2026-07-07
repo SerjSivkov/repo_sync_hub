@@ -10,6 +10,10 @@
   "actionSync": "Sync",
   "actionSave": "Сохранить",
   "actionDirectories": "Директории",
+  "actionAddRepo": "Добавить репозиторий",
+  "actionClone": "Клонировать",
+  "actionCancel": "Отмена",
+  "actionDelete": "Удалить",
 
   "tooltipScanStart": "Просканировать директории и обновить статусы репозиториев",
   "tooltipScanStop": "Прервать текущее сканирование",
@@ -17,6 +21,7 @@
   "tooltipPush": "Отправить (push) выбранные репозитории в систему-приёмник",
   "tooltipSync": "Синхронизировать: pull, затем push для выбранных",
   "tooltipDirectories": "Открыть настройки и выбрать директории сканирования",
+  "tooltipAddRepo": "Клонировать репозиторий в директорию сканирования",
   "tooltipSettings": "Настройки: директории, приёмник, тема, расписание",
   "tooltipThemeCycle": "Тема: {theme} (нажмите для переключения)",
   "tooltipShowTree": "Показать деревом",
@@ -42,6 +47,7 @@
   "menuShortcut": "Создать ярлык на Рабочем столе",
   "menuFinder": "Показать в Finder",
   "menuTerminal": "Открыть в Терминале",
+  "menuDelete": "Удалить с диска…",
 
   "tooltipOpenRemote": "Открыть origin в браузере: {url}",
   "tooltipNoRemote": "У репозитория нет origin-ссылки",
@@ -115,6 +121,31 @@
   "logNoRemoteLink": "[{name}] нет ссылки origin для открытия",
   "logOpenedRemote": "[{name}] открыт в браузере: {url}",
   "logOpenRemoteFailed": "[{name}] не удалось открыть ссылку: {error}",
+
+  "deleteDialogTitle": "Удалить репозиторий?",
+  "deleteDialogBody": "Папка репозитория «{name}» будет перемещена в Корзину. Позже её можно восстановить из Корзины.",
+  "deleteDialogDirtyWarning": "Внимание: в репозитории есть незакоммиченные изменения — они тоже уйдут в Корзину.",
+  "deleteDialogPath": "Путь: {path}",
+
+  "cloneDialogTitle": "Клонировать репозиторий",
+  "cloneDialogUrlLabel": "URL репозитория",
+  "cloneDialogUrlHint": "https://host/group/repo.git или git@host:group/repo.git",
+  "cloneDialogTargetLabel": "Директория назначения",
+  "cloneDialogNoRoots": "Сначала добавьте директорию сканирования в настройках",
+
+  "logDeleting": "[{name}] перемещение в Корзину: {path}",
+  "logDeleted": "[{name}] перемещён в Корзину",
+  "logDeleteFailed": "[{name}] не удалось удалить: {error}",
+  "logCloneStart": "Клонирование {url} в {dir}…",
+  "logCloneDone": "Клонирован: {name}",
+  "logCloneFailed": "Ошибка клонирования: {error}",
+
+  "snackDeleted": "Репозиторий перемещён в Корзину",
+  "snackDeleteFailed": "Не удалось удалить: {error}",
+  "snackCloneDone": "Репозиторий клонирован",
+  "snackCloneFailed": "Ошибка клонирования: {error}",
+  "snackCloneInvalidUrl": "Не удалось определить имя репозитория по URL",
+  "snackCloneExists": "Папка «{name}» уже существует в директории назначения",
 
   "snackShortcutCreated": "Ярлык создан на Рабочем столе",
   "snackShortcutFailed": "Не удалось создать ярлык: {error}",
@@ -206,5 +237,7 @@
   "errNoDesktop": "Папка «Рабочий стол» не найдена: {path}",
   "errOpenFailed": "open завершился с ошибкой: {error}",
   "errOpenTerminalFailed": "open -a Terminal завершился с ошибкой: {error}",
+  "errRepoNotFound": "Папка репозитория не найдена: {path}",
+  "errTrashFailed": "Не удалось переместить в Корзину: {error}",
   "exceptionScanCancelled": "Сканирование остановлено"
 }

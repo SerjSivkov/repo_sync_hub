@@ -87,6 +87,11 @@ class GitProject {
 
   bool get hasRemoteUpdates => remoteBehindCount > 0;
 
+  /// Ссылка на origin, пригодная для открытия в браузере (https).
+  /// Нормализует SSH/scp-подобные URL git в http(s). `null`, если origin
+  /// не задан или его нельзя привести к веб-ссылке.
+  String? get remoteWebUrl => gitRemoteToWebUrl(originUrl);
+
   bool get scanFailed => scanError != null;
 
   bool get isOnDefaultBranch {
@@ -222,6 +227,61 @@ class GitProject {
       status: error != null ? GitProjectStatus.error : GitProjectStatus.idle,
     );
   }
+}
+
+/// Приводит git-remote URL к веб-ссылке (https) для открытия в браузере.
+///
+/// Поддерживает форматы:
+/// - `https://host/path.git`      → `https://host/path`
+/// - `http://host/path`           → как есть
+/// - `git@host:group/repo.git`    → `https://host/group/repo` (scp-подобный)
+/// - `ssh://git@host:22/path.git` → `https://host/path`
+/// - `git://host/path.git`        → `https://host/path`
+///
+/// Токен/пароль из userinfo (`user:pass@host`) отбрасывается. Возвращает
+/// `null`, если ссылку нельзя привести к веб-адресу.
+String? gitRemoteToWebUrl(String? remote) {
+  final raw = remote?.trim();
+  if (raw == null || raw.isEmpty) return null;
+
+  String stripGitSuffix(String s) =>
+      s.endsWith('.git') ? s.substring(0, s.length - 4) : s;
+
+  String dropUserInfo(String host) {
+    final at = host.lastIndexOf('@');
+    return at >= 0 ? host.substring(at + 1) : host;
+  }
+
+  // Уже http(s) — только чистим суффикс и userinfo.
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return null;
+    final host = uri.host;
+    if (host.isEmpty) return null;
+    final path = stripGitSuffix(uri.path);
+    final portPart =
+        (uri.hasPort && uri.port != 80 && uri.port != 443) ? ':${uri.port}' : '';
+    return '${uri.scheme}://$host$portPart$path';
+  }
+
+  // ssh:// или git:// — разбираем как URI, порт отбрасываем.
+  if (raw.startsWith('ssh://') || raw.startsWith('git://')) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null || uri.host.isEmpty) return null;
+    return 'https://${uri.host}${stripGitSuffix(uri.path)}';
+  }
+
+  // scp-подобный: [user@]host:group/repo(.git)
+  final scp = RegExp(r'^([^@/]+@)?([^:/]+):(.+)$').firstMatch(raw);
+  if (scp != null) {
+    final host = dropUserInfo('${scp.group(1) ?? ''}${scp.group(2)}');
+    final path = stripGitSuffix(scp.group(3)!);
+    if (host.isEmpty || path.isEmpty) return null;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return 'https://$host$normalizedPath';
+  }
+
+  return null;
 }
 
 /// Результат git-команды.

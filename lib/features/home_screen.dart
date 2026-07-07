@@ -363,6 +363,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _openRemote(GitProject p) async {
+    final url = p.remoteWebUrl;
+    if (url == null) {
+      _log('[${p.name}] нет ссылки origin для открытия');
+      _toast('У репозитория нет origin-ссылки');
+      return;
+    }
+    try {
+      await RepoShortcut.openUrl(url);
+      _log('[${p.name}] открыт в браузере: $url');
+    } catch (e) {
+      _log('[${p.name}] не удалось открыть ссылку: $e');
+      _toast('Не удалось открыть ссылку: $e');
+    }
+  }
+
   void _toast(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -462,6 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onShortcut: _createShortcut,
                     onReveal: _revealInFinder,
                     onTerminal: _openInTerminal,
+                    onOpenRemote: _openRemote,
                   ),
           ),
           const Divider(height: 1),
@@ -679,6 +696,7 @@ class _ProjectListArea extends StatefulWidget {
     required this.onShortcut,
     required this.onReveal,
     required this.onTerminal,
+    required this.onOpenRemote,
   });
 
   final List<RepoGroup> groups;
@@ -694,6 +712,7 @@ class _ProjectListArea extends StatefulWidget {
   final void Function(GitProject project) onShortcut;
   final void Function(GitProject project) onReveal;
   final void Function(GitProject project) onTerminal;
+  final void Function(GitProject project) onOpenRemote;
 
   @override
   State<_ProjectListArea> createState() => _ProjectListAreaState();
@@ -725,6 +744,7 @@ class _ProjectListAreaState extends State<_ProjectListArea> {
           onShortcut: () => widget.onShortcut(p),
           onReveal: () => widget.onReveal(p),
           onTerminal: () => widget.onTerminal(p),
+          onOpenRemote: () => widget.onOpenRemote(p),
         );
 
     return Column(
@@ -907,6 +927,7 @@ class _ProjectTile extends StatelessWidget {
     required this.onShortcut,
     required this.onReveal,
     required this.onTerminal,
+    required this.onOpenRemote,
   });
 
   final GitProject project;
@@ -918,6 +939,7 @@ class _ProjectTile extends StatelessWidget {
   final VoidCallback onShortcut;
   final VoidCallback onReveal;
   final VoidCallback onTerminal;
+  final VoidCallback onOpenRemote;
 
   @override
   Widget build(BuildContext context) {
@@ -1023,14 +1045,24 @@ class _ProjectTile extends StatelessWidget {
                     '${Format.dateTime(project.lastPulledAt)}',
             width: 110,
           ),
+          IconButton(
+            tooltip: project.remoteWebUrl != null
+                ? 'Открыть origin в браузере: ${project.remoteWebUrl}'
+                : 'У репозитория нет origin-ссылки',
+            onPressed:
+                busy || project.remoteWebUrl == null ? null : onOpenRemote,
+            icon: const Icon(Icons.open_in_browser),
+          ),
           _ProjectMenu(
             busy: busy,
+            hasRemoteUrl: project.remoteWebUrl != null,
             onPull: onPull,
             onPush: onPush,
             onSync: onSync,
             onShortcut: onShortcut,
             onReveal: onReveal,
             onTerminal: onTerminal,
+            onOpenRemote: onOpenRemote,
           ),
         ],
       ),
@@ -1080,21 +1112,25 @@ class _MetricCell extends StatelessWidget {
 class _ProjectMenu extends StatelessWidget {
   const _ProjectMenu({
     required this.busy,
+    required this.hasRemoteUrl,
     required this.onPull,
     required this.onPush,
     required this.onSync,
     required this.onShortcut,
     required this.onReveal,
     required this.onTerminal,
+    required this.onOpenRemote,
   });
 
   final bool busy;
+  final bool hasRemoteUrl;
   final VoidCallback onPull;
   final VoidCallback onPush;
   final VoidCallback onSync;
   final VoidCallback onShortcut;
   final VoidCallback onReveal;
   final VoidCallback onTerminal;
+  final VoidCallback onOpenRemote;
 
   @override
   Widget build(BuildContext context) {
@@ -1115,19 +1151,27 @@ class _ProjectMenu extends StatelessWidget {
             onReveal();
           case 'terminal':
             onTerminal();
+          case 'remote':
+            onOpenRemote();
         }
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'pull', child: Text('Pull main/master')),
-        PopupMenuItem(value: 'push', child: Text('Push в приёмник')),
-        PopupMenuItem(value: 'sync', child: Text('Sync (pull + push)')),
-        PopupMenuDivider(),
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'pull', child: Text('Pull main/master')),
+        const PopupMenuItem(value: 'push', child: Text('Push в приёмник')),
+        const PopupMenuItem(value: 'sync', child: Text('Sync (pull + push)')),
+        const PopupMenuDivider(),
         PopupMenuItem(
+          value: 'remote',
+          enabled: hasRemoteUrl,
+          child: const Text('Открыть origin в браузере'),
+        ),
+        const PopupMenuItem(
           value: 'shortcut',
           child: Text('Создать ярлык на Рабочем столе'),
         ),
-        PopupMenuItem(value: 'finder', child: Text('Показать в Finder')),
-        PopupMenuItem(value: 'terminal', child: Text('Открыть в Терминале')),
+        const PopupMenuItem(value: 'finder', child: Text('Показать в Finder')),
+        const PopupMenuItem(
+            value: 'terminal', child: Text('Открыть в Терминале')),
       ],
     );
   }

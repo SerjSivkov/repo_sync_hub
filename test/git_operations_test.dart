@@ -99,6 +99,72 @@ void main() {
     });
   });
 
+  group('gitRemoteToWebUrl', () {
+    test('keeps https url and strips .git suffix', () {
+      expect(
+        gitRemoteToWebUrl('https://github.com/mobile/app.git'),
+        'https://github.com/mobile/app',
+      );
+    });
+
+    test('keeps http scheme', () {
+      expect(
+        gitRemoteToWebUrl('http://git.local/mobile/app'),
+        'http://git.local/mobile/app',
+      );
+    });
+
+    test('drops userinfo (token) from https url', () {
+      expect(
+        gitRemoteToWebUrl('https://oauth2:secret@gitlab.com/mobile/app.git'),
+        'https://gitlab.com/mobile/app',
+      );
+    });
+
+    test('converts scp-like ssh url to https', () {
+      expect(
+        gitRemoteToWebUrl('git@github.com:mobile/app.git'),
+        'https://github.com/mobile/app',
+      );
+    });
+
+    test('converts ssh:// url and drops port', () {
+      expect(
+        gitRemoteToWebUrl('ssh://git@gitlab.com:22/mobile/app.git'),
+        'https://gitlab.com/mobile/app',
+      );
+    });
+
+    test('converts git:// url', () {
+      expect(
+        gitRemoteToWebUrl('git://github.com/mobile/app.git'),
+        'https://github.com/mobile/app',
+      );
+    });
+
+    test('preserves non-default https port', () {
+      expect(
+        gitRemoteToWebUrl('https://git.local:8443/mobile/app.git'),
+        'https://git.local:8443/mobile/app',
+      );
+    });
+
+    test('returns null for null/empty/unparseable', () {
+      expect(gitRemoteToWebUrl(null), isNull);
+      expect(gitRemoteToWebUrl(''), isNull);
+      expect(gitRemoteToWebUrl('   '), isNull);
+    });
+
+    test('remoteWebUrl getter uses originUrl', () {
+      final project = GitProject(
+        name: 'app',
+        path: '/app',
+        originUrl: 'git@github.com:mobile/app.git',
+      );
+      expect(project.remoteWebUrl, 'https://github.com/mobile/app');
+    });
+  });
+
   group('ScanProgress', () {
     test('fraction reflects completed over total', () {
       const progress = ScanProgress(total: 10, completed: 4, successCount: 3, errorCount: 1);

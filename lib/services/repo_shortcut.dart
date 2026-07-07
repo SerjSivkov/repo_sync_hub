@@ -48,4 +48,12 @@ class RepoShortcut {
       throw StateError('open -a Terminal завершился с ошибкой: ${result.stderr}');
     }
   }
+
+  /// Открывает ссылку в браузере по умолчанию.
+  static Future<void> openUrl(String url) async {
+    final result = await Process.run('open', [url]);
+    if (result.exitCode != 0) {
+      throw StateError('open завершился с ошибкой: ${result.stderr}');
+    }
+  }
 }

@@ -18,6 +18,7 @@ import '../services/git_scanner.dart';
 import '../services/repo_cache.dart';
 import '../services/repo_shortcut.dart';
 import '../services/scan_cancellation.dart';
+import 'about_screen.dart';
 import 'settings_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -251,6 +252,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     await _persistCache();
     if (mounted) setState(() => _busy = false);
+  }
+
+  void _openAbout() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+    );
   }
 
   Future<void> _openSettings() async {
@@ -566,6 +573,11 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: l10n.tooltipSettings,
             onPressed: _busy ? null : _openSettings,
             icon: const Icon(Icons.settings_outlined),
+          ),
+          IconButton(
+            tooltip: 'О приложении',
+            onPressed: _openAbout,
+            icon: const Icon(Icons.info_outline_rounded),
           ),
         ],
       ),

@@ -1,5 +1,7 @@
 # Repo Sync Hub
 
+**Русский** · [English](README.en.md) · [中文](README.zh.md)
+
 macOS-инструмент на Flutter для массового обслуживания локальных git-проектов:
 
 - сканирование **нескольких** директорий с репозиториями;
@@ -104,4 +106,6 @@ Bug reports, предложения и pull request — см. [CONTRIBUTING.md](
 
 ## Лицензия
 
-[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+Copyright (C) 2026 Sergey Sivkov
+
+Проект распространяется под лицензией [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).

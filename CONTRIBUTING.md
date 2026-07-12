@@ -170,6 +170,8 @@ Optional body with details.
 
 ## Лицензия
 
+Copyright (C) 2026 Sergey Sivkov
+
 Проект распространяется под [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
 
 Отправляя PR или иной вклад, вы соглашаетесь, что ваш код будет лицензирован на тех же условиях. При использовании кода из других проектов указывайте совместимость лицензий и сохраняйте copyright notices.
